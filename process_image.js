@@ -3,13 +3,17 @@ var request = require("request");
 var fs = require("fs");
 var dateFormat = require('dateformat');
 
-// For zoom 2
-// lat = ido
-// long = keido
-function latLongToImgPos(lat, long){
-    var lat_ = (61-lat)/13.5;
+/**
+ * Map from (lat, long) and zoom level to mesh pixel
+ * @param lat ido
+ * @param long keido
+ * @param zoom zoom level from 1 to any number
+ * @returns {{imgLat: Number, imgLong: Number, pixLat: Number, pixLong: Number}}
+ */
+function latLongToImgPos(lat, long, zoom){
+    var lat_ = (61-lat)/(54/Math.pow(2, zoom));
     var lat_int = parseInt(lat_);
-    var long_ = (long-100)/17.5;
+    var long_ = (long-100)/(70/Math.pow(2, zoom));
     var long_int = parseInt(long_);
     return {
         imgLat: lat_int,
@@ -19,13 +23,16 @@ function latLongToImgPos(lat, long){
     };
 }
 
-// MAP_MASK: while map
-// HRKSNC_GRAY: grayscale rain amount
-var urls = {
-    "MAP_MASK": "http://www.jma.go.jp/jp/commonmesh/map_tile/MAP_MASK/none/none/",
-};
 
-
+/**
+ *
+ * @param type
+ *   MAP_MASK: while map
+ *   HRKSNC_GRAY: grayscale rain amount
+ * @param date
+ * @param zoom
+ * @returns {string}
+ */
 function getImageUrlPrefix(type, date, zoom) {
     var dateString;
     if(!date || type === "MAP_MASK"){
@@ -39,9 +46,9 @@ function getImageUrlPrefix(type, date, zoom) {
 
 console.log(getImageUrlPrefix("MAP_MASK", new Date(), 2));
 
-function downloadMap(lat, long, type, zoom, date){
-    var temp_name = "temp.png";
-    var obj = latLongToImgPos(lat, long);
+function downloadMap(lat, long, type, zoom, date, fileName){
+    var temp_name = fileName+"_temp.png";
+    var obj = latLongToImgPos(lat, long, zoom);
     console.log("position", obj);
     var url = getImageUrlPrefix(type, date, zoom) + obj.imgLong + "_" + obj.imgLat + ".png";
     /*request(url, function (error, response, body) {
@@ -49,6 +56,7 @@ function downloadMap(lat, long, type, zoom, date){
         console.log('statusCode:', response && response.statusCode); // Print the response status code if a response was received
         console.log('body:', body); // Print the HTML for the Google homepage.
     })*/
+    console.log(url);
 //    request(url).pipe(fs.createWriteStream(temp_name));
     request.get(url, {encoding: null},function(error, response, body) {
         var buffer = new Buffer(body);
@@ -73,7 +81,7 @@ function downloadMap(lat, long, type, zoom, date){
                     wh*2);*/
 //        Math.min(image.bitmap.height, obj.pixLat+wh),
 //            Math.min(image.bitmap.width, obj.pixLong+wh));
-                image.write("output.png");
+                image.write(fileName);
             });
         });
     });
@@ -81,7 +89,9 @@ function downloadMap(lat, long, type, zoom, date){
 }
 
 //downloadMap(35.36, 138.73, "MAP_MASK"); // Fuji
-downloadMap(35.701686, 140.876678, "MAP_MASK", 2); // choshi
+for(var zoom = 2; zoom<10; zoom++){
+    downloadMap(35.701686, 140.876678, "MAP_MASK", zoom, null, "choshi_"+zoom+".png"); // choshi
+}
 
 function test(){
     Jimp.read("./test.png", function (err, image) {
