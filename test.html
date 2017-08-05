@@ -1,0 +1,23 @@
+<title>Test</title>
+
+<script
+        src="http://code.jquery.com/jquery-3.2.1.min.js"
+        integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
+        crossorigin="anonymous"></script>
+<script>
+    $.ajax({
+        type: 'POST',
+        url: "/api",
+        data: [
+            {lat: 35.701686, long: 140.876678},
+            {lat: 35.36, long: 138.73}
+        ],
+        success: function (data) {
+            console.log("Got " + data.length + " results");
+            data.forEach(function (data) {
+                console.log(data);
+            });
+        },
+        dataType: "json"
+    });
+</script>
