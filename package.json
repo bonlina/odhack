@@ -1,0 +1,17 @@
+{
+  "name": "odhack",
+  "version": "1.0.0",
+  "description": "",
+  "main": "process_image.js",
+  "dependencies": {
+    "dateformat": "^2.0.0",
+    "jimp": "^0.2.28",
+    "request": "^2.81.0"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}
