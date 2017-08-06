@@ -87,7 +87,6 @@ function normalizeDate(date) {
     date.setMinutes(normalizeMinutes(date.getMinutes()));
     date.setSeconds(0);
     date.setMilliseconds(0);
-    console.log("normalized", date);
     return date;
 }
 
@@ -100,8 +99,9 @@ function downloadMap(pos, type, zoom, date, fileName) {
     return new Promise(function (resolve) {
         var map = pos.mapToImage(zoom);
         var url = getImageUrlPrefix(type, date, zoom) + map.imgLong + "_" + map.imgLat + ".png";
-        console.log(url, map);
+        console.log("START", url);
         request.get(url, {encoding: null}, function (error, response, body) {
+            console.log("FINISH", url);
             var buffer = new Buffer(body);
             fs.writeFile(fileName, buffer, function () {
                 resolve();
@@ -164,6 +164,7 @@ function getAmount(pos, zoom, date) {
 }
 
 function getDatesWithinAnHour(date){
+    return [date]; // temporarily
     var dates = [];
     for (var i = 0; i < 12; i++) {
         dates.push(new Date(date.getTime() + FIVE_MIN * i));

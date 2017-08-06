@@ -11,7 +11,6 @@ app.get('/', function (req, res) {
 });
 
 app.post('/api', function (req, res) {
-    console.log(req.body);
     var unixtime = parseInt(req.body.unixtime);
     var date = isNaN(unixtime) ? new Date() : new Date(unixtime);
 
@@ -20,7 +19,6 @@ app.post('/api', function (req, res) {
         return rnc.getAmountsWithinAnHour(pos, 6, date);
     });
     Promise.all(promises).then(function (amounts) {
-        console.log("got amounts", amounts);
         res.json({
             pos: amounts.map(function (amounts) {
                 return {

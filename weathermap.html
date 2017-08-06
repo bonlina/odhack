@@ -369,7 +369,6 @@ function getWeather(latLng, callback) {
             pos: [{lat: latLng.lat(), lng: latLng.lng()}]
            },
            success: function (data) {
-           alert(123);
            callback(data);
            console.log("Got " + data.length + " results");
            data.pos.forEach(function (data) { console.log(data); });
