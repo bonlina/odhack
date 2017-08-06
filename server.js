@@ -17,13 +17,19 @@ app.post('/api', function (req, res) {
 
     var promises = req.body.pos.map(function (elem) {
         var pos = rnc.Pos.fromObject(elem);
-        return rnc.getAmount(pos, 6, date);
+        return rnc.getAmountsWithinAnHour(pos, 6, date);
     });
     Promise.all(promises).then(function (amounts) {
         console.log("got amounts", amounts);
         res.json({
-            pos: amounts.map(function (amount) {
-                return {mm: amount};
+            pos: amounts.map(function (amounts) {
+                return {
+                    mms: amounts,
+                    mm: amounts[0],
+                };
+            }),
+            dates: rnc.getDatesWithinAnHour(date).map(function (date) {
+                return date.toString();
             })
         });
     });

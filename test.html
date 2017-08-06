@@ -21,7 +21,8 @@
             ]
         },
         success: function (data) {
-            console.log("Got " + data.length + " results");
+            console.log(data);
+            console.log("Got " + data.pos.length + " results");
             data.pos.forEach(function (data) {
                 console.log(data);
             });
