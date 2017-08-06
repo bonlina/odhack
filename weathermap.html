@@ -191,8 +191,8 @@
                 anchor: new google.maps.Point(0, 0) // anchor
             };
             
-            var sun_under_cloud_and_rain1 = {
-                url: "http://profigrupp-izh.ru/images/pattern.png?crc=3972484510", // url
+            var heavy_rain = {
+                url: "/heavy_rain.png",
                 scaledSize: new google.maps.Size(50, 50), // scaled size
                 origin: new google.maps.Point(0, 0), // origin
                 anchor: new google.maps.Point(0, 0) // anchor
@@ -209,28 +209,37 @@
                     showHighs(myRoute, map);
                     
                     for (var i = 0; i < myRoute.steps.length; i++) {
-                        var marker = new google.maps.Marker;
-                        markerArray.push(marker);
+                        
                         var step = myRoute.steps[i];
                         var start_location = step.start_location;
-                        marker.setPosition(start_location);
-                        
                        
-                        if ((i!=0) && (distanceWhenShownLastTime > (1000 * map.getZoom()) || (i==1) || (i == myRoute.steps.length-2))) {
+                        if ((i!=0) && ((distanceWhenShownLastTime > (1000 * map.getZoom()) || (i==1) || (i == myRoute.steps.length-1)))) {
                             // show weather
-                            marker.setMap(map);
-                            data_mm = 0;
-                            getWeather(start_location, function(data) {
-                            	data_mm = data;
-                            	marker.setIcon(sun_under_cloud_and_rain);
-                            });
+                            mm = 0;
+                            getWeather(start_location, function(start_location, markerArray, i) {
+                            	return function(data) {
+                            		mm = data.pos[0].mm;
+                	            	var marker = new google.maps.Marker;
+                    	        	markerArray.push(marker);
+                        	    	marker.setPosition(start_location);
+                        	    	if (mm == 0) {
+                            			marker.setIcon(sun_under_cloud_and_rain);
+                            		} else if (mm == 1) {
+                            			marker.setIcon(heavy_rain);
+                            		} else {
+                            			marker.setIcon(sun_under_cloud_and_rain);
+                            		}
+                            		marker.setMap(map);
+                            		attachInstructionText(stepDisplay, marker, myRoute.steps[i].instructions, map);
+                            	}
+                            }(start_location, markerArray, i)
+                            );
                             distanceWhenShownLastTime = 0;
                         } else {
                             // don't show weather
-                            marker.setMap(null);
                             distanceWhenShownLastTime = distanceWhenShownLastTime + step.distance.value;
                         }
-                        attachInstructionText(stepDisplay, marker, myRoute.steps[i].instructions, map);
+                        
                     }
         }
         
@@ -366,7 +375,7 @@ function getWeather(latLng, callback) {
            data: {
                //  unixtime: new Date().getTime(),
                unixtime: new Date("2017-08-06T09:40+0900").getTime(),
-            pos: [{lat: latLng.lat(), lng: latLng.lng()}]
+               pos: [{lat: latLng.lat(), lng: latLng.lng()}]
            },
            success: function (data) {
            callback(data);
