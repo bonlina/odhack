@@ -12,16 +12,19 @@ app.get('/', function (req, res) {
 
 app.post('/api', function (req, res) {
     console.log(req.body);
-    //res.json(req.body);
-    // TODO: send real data in given points
-    var pos = new rnc.Pos(req.body.pos[0].lat, req.body.pos[1].lng);
-    var date = new Date(parseInt(req.body.unixtime));
-    console.log(pos, date);
-    rnc.getAmount(pos, 6, date, function(amount){
+    var unixtime = parseInt(req.body.unixtime);
+    var date = isNaN(unixtime) ? new Date() : new Date(unixtime);
+
+    var promises = req.body.pos.map(function (elem) {
+        var pos = rnc.Pos.fromObject(elem);
+        return rnc.getAmount(pos, 6, date);
+    });
+    Promise.all(promises).then(function (amounts) {
+        console.log("got amounts", amounts);
         res.json({
-           pos: [
-               {mm: amount}
-           ]
+            pos: amounts.map(function (amount) {
+                return {mm: amount};
+            })
         });
     });
 });
@@ -33,7 +36,7 @@ app.get('/map', function (req, res) {
     var type = req.query.mapType || "MAP_MASK";
     var date = type === "MAP_MASK" ? null : new Date();
     var fileName = "req.png";
-    rnc.downloadAndMarkPoint(pos, rnc.MAP_TYPE[type], zoom, date, fileName, function () {
+    rnc.downloadAndMarkPoint(pos, rnc.MAP_TYPE[type], zoom, date, fileName).then(function () {
         res.sendFile(__dirname + "/" + fileName);
     });
 });

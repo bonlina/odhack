@@ -95,61 +95,70 @@ function toStringUTC(date) {
     return dateFormat(utcDate, "yyyymmddHHMM");
 }
 
-function downloadMap(pos, type, zoom, date, fileName, callback) {
-    var map = pos.mapToImage(zoom);
-    var url = getImageUrlPrefix(type, date, zoom) + map.imgLong + "_" + map.imgLat + ".png";
-    console.log(url, map);
-    request.get(url, {encoding: null}, function (error, response, body) {
-        var buffer = new Buffer(body);
-        fs.writeFile(fileName, buffer, function () {
-            callback();
-        });
-    });
-}
-
-function markPoint(pos, zoom, fileName, callback) {
-    Jimp.read(fileName, function (err, image) {
-        if (err) {
-            throw err;
-        }
+function downloadMap(pos, type, zoom, date, fileName) {
+    return new Promise(function (resolve) {
         var map = pos.mapToImage(zoom);
-
-        image.scan(map.pixLong - 1, map.pixLat - 1, 3, 3, function (x, y, idx) {
-            this.bitmap.data[idx + 0] = 255; // red
-            this.bitmap.data[idx + 1] = 0; // green
-            this.bitmap.data[idx + 2] = 0; // blue
-            this.bitmap.data[idx + 3] = 255; // alpha
-        });
-        image.write(fileName, callback);
-    });
-}
-
-
-function downloadAndMarkPoint(pos, type, zoom, date, fileName, callback) {
-    downloadMap(pos, type, zoom, date, fileName, function () {
-        markPoint(pos, zoom, fileName, function () {
-            callback();
+        var url = getImageUrlPrefix(type, date, zoom) + map.imgLong + "_" + map.imgLat + ".png";
+        console.log(url, map);
+        request.get(url, {encoding: null}, function (error, response, body) {
+            var buffer = new Buffer(body);
+            fs.writeFile(fileName, buffer, function () {
+                resolve();
+            });
         });
     });
 }
 
-function getAmount(pos, zoom, date, callback) {
-    var fileName = "get_amount.png";
+function markPoint(pos, zoom, fileName) {
+    return new Promise(function (resolve) {
+        Jimp.read(fileName, function (err, image) {
+            if (err) {
+                throw err;
+            }
+            var map = pos.mapToImage(zoom);
+
+            image.scan(map.pixLong - 1, map.pixLat - 1, 3, 3, function (x, y, idx) {
+                this.bitmap.data[idx + 0] = 255; // red
+                this.bitmap.data[idx + 1] = 0; // green
+                this.bitmap.data[idx + 2] = 0; // blue
+                this.bitmap.data[idx + 3] = 255; // alpha
+            });
+            image.write(fileName, function () {
+                resolve();
+            });
+        });
+    });
+}
+
+
+function downloadAndMarkPoint(pos, type, zoom, date, fileName) {
+    return downloadMap(pos, type, zoom, date, fileName)
+        .then(function () {
+            return markPoint(pos, zoom, fileName);
+        });
+}
+
+
+function getAmount(pos, zoom, date) {
+    var fileName = "temp/"+Math.random()+".png";
     var map = pos.mapToImage(zoom);
     if (zoom >= 7) {
         console.error("Resolution for amount should be Maximum 6");
         zoom = 6;
     }
-    downloadMap(pos, MAP_TYPE.HRKSNC_GRAY, zoom, date, fileName, function () {
-        Jimp.read(fileName, function (err, image) {
-            if (err) {
-                console.error(err);
-                throw err;
-            }
-            var color = image.getPixelColor(map.pixLong, map.pixLat);
-            callback(colorToAmount(color));
+    return downloadMap(pos, MAP_TYPE.HRKSNC_GRAY, zoom, date, fileName)
+        .then(function () {
+            return new Promise(function (resolve) {
+                Jimp.read(fileName, function (err, image) {
+                    if (err) {
+                        throw err;
+                    }
+                    var color = image.getPixelColor(map.pixLong, map.pixLat);
+                    var amount = colorToAmount(color);
+                    resolve(amount);
+                });
+            });
         });
-    });
 }
 
 var COLOR_MM = [
