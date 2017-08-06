@@ -177,14 +177,14 @@ function getAmountsWithinAnHour(pos, zoom, date) {
 }
 
 var COLOR_MM = [
-    {color: '151515ff', amount: 80},
-    {color: '282828ff', amount: 50},
-    {color: '3d3d3dff', amount: 30},
-    {color: '646464ff', amount: 20},
-    {color: '828282ff', amount: 10},
-    {color: 'a0a0a0ff', amount: 5},
-    {color: 'bebebeff', amount: 1},
-    {color: 'dcdcdcff', amount: 0}
+    {color: '151515ff', amount: 100}, // Infinity
+    {color: '282828ff', amount: 80},
+    {color: '3d3d3dff', amount: 50},
+    {color: '646464ff', amount: 30},
+    {color: '828282ff', amount: 20},
+    {color: 'a0a0a0ff', amount: 10},
+    {color: 'bebebeff', amount: 5},
+    {color: 'dcdcdcff', amount: 1}
 ];
 
 function colorToAmount(color) {
