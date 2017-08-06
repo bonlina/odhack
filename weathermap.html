@@ -361,11 +361,11 @@
 function getWeather(latLng) {
     $.ajax({
            type: 'POST',
-           url: "localhost:3000/api",
+           url: "/api",
            data: {
                //  unixtime: new Date().getTime(),
                unixtime: new Date("2017-08-06T09:40+0900").getTime(),
-            pos: {lat: latLng.lat, lng: latLng.lng}
+            pos: [{lat: latLng.lat, lng: latLng.lng}]
            },
            success: function (data) {
            console.log("Got " + data.length + " results");

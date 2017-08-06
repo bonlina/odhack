@@ -7,7 +7,7 @@ app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
 
 app.get('/', function (req, res) {
-    res.sendFile(__dirname + "/test.html");
+    res.sendFile(__dirname + "/weathermap.html");
 });
 
 app.post('/api', function (req, res) {
