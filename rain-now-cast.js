@@ -3,6 +3,11 @@ var fs = require("fs");
 var Jimp = require("jimp");
 var dateFormat = require('dateformat');
 
+var MAP_TYPE = {
+    MAP_MASK: "MAP_MASK", // White map
+    HRKSNC_GRAY: "HRKSNC_GRAY", // Grayscale rain amount
+};
+
 /**
  * Position model
  * @param lat ido
@@ -10,17 +15,27 @@ var dateFormat = require('dateformat');
  * @constructor
  */
 function Pos(lat, long) {
+    if (typeof lat === "string") {
+        lat = Number(lat);
+    }
+    if (typeof long === "string") {
+        long = Number(long);
+    }
     this.lat = lat;
     this.long = long;
 }
+
+Pos.fromObject = function (obj) {
+    return new Pos(obj.lat, obj.lng);
+};
 
 /**
  * Map from (lat, long) and zoom level to mesh pixel
  * @param zoom zoom level from 1 to any number
  * @returns {{imgLat: Number, imgLong: Number, pixLat: Number, pixLong: Number}}
  */
-Pos.prototype.mapToImage = function(zoom) {
-    if(!zoom){
+Pos.prototype.mapToImage = function (zoom) {
+    if (!zoom) {
         zoom = 2;
     }
     var lat_ = (61 - this.lat) / (54 / Math.pow(2, zoom));
@@ -38,8 +53,6 @@ Pos.prototype.mapToImage = function(zoom) {
 /**
  *
  * @param type
- *   MAP_MASK: white map
- *   HRKSNC_GRAY: grayscale rain amount
  * @param date
  * @param zoom
  * @returns {string}
@@ -58,7 +71,7 @@ function getImageUrlPrefix(type, date, zoom) {
 function downloadMap(pos, type, zoom, date, fileName, callback) {
     var map = pos.mapToImage(zoom);
     var url = getImageUrlPrefix(type, date, zoom) + map.imgLong + "_" + map.imgLat + ".png";
-    console.log(url)
+    console.log(url, map);
     request.get(url, {encoding: null}, function (error, response, body) {
         var buffer = new Buffer(body);
         fs.writeFile(fileName, buffer, function () {
@@ -80,23 +93,24 @@ function markPoint(pos, zoom, fileName, callback) {
             this.bitmap.data[idx + 2] = 0; // blue
             this.bitmap.data[idx + 3] = 255; // alpha
         });
-        image.write(fileName);
-        callback();
+        image.write(fileName, callback);
     });
 }
 
 
-function downloadAndMarkPoint(pos, type, zoom, date, fileName){
-    downloadMap(pos, type, zoom, date, fileName, function(){
-       markPoint(pos, zoom, fileName, function(){});
+function downloadAndMarkPoint(pos, type, zoom, date, fileName, callback) {
+    downloadMap(pos, type, zoom, date, fileName, function () {
+        markPoint(pos, zoom, fileName, function () {
+            callback();
+        });
     });
 }
 
-function getAmount(pos, zoom, date, callback){
+function getAmount(pos, zoom, date, callback) {
     var fileName = "get_amount.png";
-    downloadMap(pos, "HRKSNC_GRAY", zoom, date, fileName, function(){
+    downloadMap(pos, "HRKSNC_GRAY", zoom, date, fileName, function () {
         Jimp.read(fileName, function (err, image) {
-            if(err) throw err;
+            if (err) throw err;
             var color = image.getPixelColor(pos.pixLong, pos.pixLat);
             callback(colorToAmount(color));
         });
@@ -127,6 +141,7 @@ function colorToAmount(color) {
 }
 
 exports.Pos = Pos;
+exports.MAP_TYPE = MAP_TYPE;
 exports.downloadAndMarkPoint = downloadAndMarkPoint;
 exports.getAmount = getAmount;
 

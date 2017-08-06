@@ -4,6 +4,7 @@
   "description": "",
   "main": "process_image.js",
   "dependencies": {
+    "body-parser": "^1.17.2",
     "dateformat": "^2.0.0",
     "express": "^4.15.3",
     "jimp": "^0.2.28",
