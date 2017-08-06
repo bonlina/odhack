@@ -14,21 +14,26 @@ app.post('/api', function (req, res) {
     console.log(req.body);
     //res.json(req.body);
     // TODO: send real data in given points
-    res.json({
-        pos:[
-            {mm: 10},
-            {mm: 5}
-        ]
-    })
-//    rnc.getAmount()
+    var pos = new rnc.Pos(req.body.pos[0].lat, req.body.pos[1].lng);
+    var date = new Date(parseInt(req.body.unixtime));
+    console.log(pos, date);
+    rnc.getAmount(pos, 6, date, function(amount){
+        res.json({
+           pos: [
+               {mm: amount}
+           ]
+        });
+    });
 });
 
 app.get('/map', function (req, res) {
     var pos = new rnc.Pos(req.query.lat, req.query.lng);
     console.log(pos);
     var zoom = parseInt(req.query.zoom) || 2;
+    var type = req.query.mapType || "MAP_MASK";
+    var date = type === "MAP_MASK" ? null : new Date();
     var fileName = "req.png";
-    rnc.downloadAndMarkPoint(pos, rnc.MAP_TYPE.MAP_MASK, zoom, null, fileName, function () {
+    rnc.downloadAndMarkPoint(pos, rnc.MAP_TYPE[type], zoom, date, fileName, function () {
         res.sendFile(__dirname + "/" + fileName);
     });
 });

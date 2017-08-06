@@ -4,8 +4,8 @@ var Jimp = require("jimp");
 var dateFormat = require('dateformat');
 
 var MAP_TYPE = {
-    MAP_MASK: "MAP_MASK", // White map
-    HRKSNC_GRAY: "HRKSNC_GRAY", // Grayscale rain amount
+    MAP_MASK: "http://www.jma.go.jp/jp/commonmesh/map_tile/MAP_MASK", // White map
+    HRKSNC_GRAY: "http://www.jma.go.jp/jp/highresorad/highresorad_tile/HRKSNC_GRAY", // Grayscale rain amount
 };
 
 /**
@@ -58,14 +58,41 @@ Pos.prototype.mapToImage = function (zoom) {
  * @returns {string}
  */
 function getImageUrlPrefix(type, date, zoom) {
-    var dateString;
-    if (!date || type === "MAP_MASK") {
-        dateString = "none";
+    var from, to;
+    if (!date || type === MAP_TYPE.MAP_MASK) {
+        from = to = "none";
     } else {
-        dateString = dateFormat(date, "yyyymmddHHMM");
-        dateString[dateString.length - 1] = "0";
+        date = normalizeDate(date);
+        // Need to set past because latest prediction is not always available
+        var fiveMin = 5 * 60 * 1000;
+        var now = normalizeDate(new Date(new Date().getTime() - fiveMin));
+        if (date.getTime() < now.getTime()) {
+            // past date
+            from = to = toStringUTC(date)
+        } else {
+            // prediction date
+            from = toStringUTC(now);
+            to = toStringUTC(date);
+        }
     }
-    return "http://www.jma.go.jp/jp/commonmesh/map_tile/" + type + "/" + dateString + "/" + dateString + "/zoom" + zoom + "/";
+    return type + "/" + from + "/" + to + "/zoom" + zoom + "/";
+}
+
+function normalizeMinutes(min) {
+    return parseInt(min / 5) * 5;
+}
+
+function normalizeDate(date) {
+    date.setMinutes(normalizeMinutes(date.getMinutes()));
+    date.setSeconds(0);
+    date.setMilliseconds(0);
+    console.log("normalized", date);
+    return date;
+}
+
+function toStringUTC(date) {
+    var utcDate = new Date(date.getTime() - 9 * 60 * 60 * 1000);
+    return dateFormat(utcDate, "yyyymmddHHMM");
 }
 
 function downloadMap(pos, type, zoom, date, fileName, callback) {
@@ -108,10 +135,18 @@ function downloadAndMarkPoint(pos, type, zoom, date, fileName, callback) {
 
 function getAmount(pos, zoom, date, callback) {
     var fileName = "get_amount.png";
-    downloadMap(pos, "HRKSNC_GRAY", zoom, date, fileName, function () {
+    var map = pos.mapToImage(zoom);
+    if (zoom >= 7) {
+        console.error("Resolution for amount should be Maximum 6");
+        zoom = 6;
+    }
+    downloadMap(pos, MAP_TYPE.HRKSNC_GRAY, zoom, date, fileName, function () {
         Jimp.read(fileName, function (err, image) {
-            if (err) throw err;
-            var color = image.getPixelColor(pos.pixLong, pos.pixLat);
+            if (err) {
+                console.error(err);
+                throw err;
+            }
+            var color = image.getPixelColor(map.pixLong, map.pixLat);
             callback(colorToAmount(color));
         });
     });
@@ -129,6 +164,7 @@ var COLOR_MM = [
 ];
 
 function colorToAmount(color) {
+    color = color.toString(16);
     for (var val of COLOR_MM) {
         if (color <= val.color) {
             return val.amount;
@@ -137,13 +173,10 @@ function colorToAmount(color) {
     if (color === "ffffff00") {
         return 0;
     }
-    throw "unknown color";
+    throw "unknown color: " + color;
 }
 
 exports.Pos = Pos;
 exports.MAP_TYPE = MAP_TYPE;
 exports.downloadAndMarkPoint = downloadAndMarkPoint;
 exports.getAmount = getAmount;
-
-// Usages
-// console.log(getImageUrlPrefix("MAP_MASK", new Date(), 2));
