@@ -169,7 +169,6 @@
                                         //document.getElementById('warnings-panel').innerHTML = '<b>' + response.routes[0].warnings + '</b>';
                                         directionsDisplay.setDirections(response);
                                         showSteps(response, markerArray, stepDisplay, map, 0);
-                                    console.log(markerArray);
                                     } else {
                                     window.alert('Directions request failed due to ' + status);
           }
@@ -312,18 +311,8 @@
             this.directionsDisplay.setMap(map);
             
             var originAutocomplete = new google.maps.places.Autocomplete(originInput, {placeIdOnly: true});
-            var destinationAutocomplete = new google.maps.places.Autocomplete(destinationInput, {placeIdOnly: true});
-                                                                                                                                           
-                                                                                                                                           this.setupClickListener('changemode-walking', 'WALKING', directionsDisplay, directionsService, markerArray, stepDisplay, map);
-                                                                                                    
-                                                                                                                                           this.setupClickListener('changemode-driving', 'DRIVING', directionsDisplay, directionsService, markerArray, stepDisplay, map);
-                                                                                                                                           
-                                                                                                                                           this.setupPlaceChangedListener(originAutocomplete, 'ORIG', directionsDisplay, directionsService, markerArray, stepDisplay, map);
-                                                                                                                                           this.setupPlaceChangedListener(destinationAutocomplete, 'DEST', directionsDisplay, directionsService, markerArray, stepDisplay, map);
-                                                                                                                                           
-                                                                                                                                           this.map.controls[google.maps.ControlPosition.TOP_LEFT].push(originInput);
-                                                                                                                                           this.map.controls[google.maps.ControlPosition.TOP_LEFT].push(destinationInput);
-                                                                                                                                           this.map.controls[google.maps.ControlPosition.TOP_LEFT].push(modeSelector);
+            var destinationAutocomplete = new google.maps.places.Autocomplete(destinationInput, {placeIdOnly: true});                                                                                       
+            this.map.controls[google.maps.ControlPosition.TOP_LEFT].push(destinationInput);                                                                                                                                   this.map.controls[google.maps.ControlPosition.TOP_LEFT].push(modeSelector);
         }
         
         // Sets a listener on a radio button to change the filter type on Places
@@ -359,13 +348,14 @@
 
 
 function getWeather(latLng) {
+console.log(latLng.lat());
     $.ajax({
            type: 'POST',
            url: "/api",
            data: {
                //  unixtime: new Date().getTime(),
                unixtime: new Date("2017-08-06T09:40+0900").getTime(),
-            pos: [{lat: latLng.lat, lng: latLng.lng}]
+            pos: [{lat: latLng.lat(), lng: latLng.lng()}]
            },
            success: function (data) {
            console.log("Got " + data.length + " results");
