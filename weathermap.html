@@ -190,6 +190,14 @@
                 origin: new google.maps.Point(0, 0), // origin
                 anchor: new google.maps.Point(0, 0) // anchor
             };
+            
+            var sun_under_cloud_and_rain1 = {
+                url: "http://profigrupp-izh.ru/images/pattern.png?crc=3972484510", // url
+                scaledSize: new google.maps.Size(50, 50), // scaled size
+                origin: new google.maps.Point(0, 0), // origin
+                anchor: new google.maps.Point(0, 0) // anchor
+            };
+            
                 //alert(directionResult.routes.length);
                 var distanceWhenShownLastTime = 99999;
                 var myRoute = directionResult.routes[routeIndex].legs[0];
@@ -206,12 +214,16 @@
                         var step = myRoute.steps[i];
                         var start_location = step.start_location;
                         marker.setPosition(start_location);
-                        getWeather(start_location);
+                        
                        
                         if ((i!=0) && (distanceWhenShownLastTime > (1000 * map.getZoom()) || (i==1) || (i == myRoute.steps.length-2))) {
                             // show weather
                             marker.setMap(map);
-                            marker.setIcon(sun_under_cloud_and_rain);
+                            data_mm = 0;
+                            getWeather(start_location, function(data) {
+                            	data_mm = data;
+                            	marker.setIcon(sun_under_cloud_and_rain);
+                            });
                             distanceWhenShownLastTime = 0;
                         } else {
                             // don't show weather
@@ -347,8 +359,7 @@
         };
 
 
-function getWeather(latLng) {
-console.log(latLng.lat());
+function getWeather(latLng, callback) {
     $.ajax({
            type: 'POST',
            url: "/api",
@@ -358,6 +369,8 @@ console.log(latLng.lat());
             pos: [{lat: latLng.lat(), lng: latLng.lng()}]
            },
            success: function (data) {
+           alert(123);
+           callback(data);
            console.log("Got " + data.length + " results");
            data.pos.forEach(function (data) { console.log(data); });
            },

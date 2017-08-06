@@ -152,11 +152,12 @@ function getAmount(pos, zoom, date) {
             return new Promise(function (resolve) {
                 Jimp.read(fileName, function (err, image) {
                     if (err) {
-                        throw err;
-                    }
+                        //throw err;
+                    } else {
                     var color = image.getPixelColor(map.pixLong, map.pixLat);
                     var amount = colorToAmount(color);
                     resolve(amount);
+                    }
                 });
             });
         });
