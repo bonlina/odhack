@@ -50,6 +50,8 @@ Pos.prototype.mapToImage = function (zoom) {
     };
 };
 
+var FIVE_MIN = 5 * 60 * 1000;
+
 /**
  *
  * @param type
@@ -64,8 +66,7 @@ function getImageUrlPrefix(type, date, zoom) {
     } else {
         date = normalizeDate(date);
         // Need to set past because latest prediction is not always available
-        var fiveMin = 5 * 60 * 1000;
-        var now = normalizeDate(new Date(new Date().getTime() - fiveMin));
+        var now = normalizeDate(new Date(new Date().getTime() - FIVE_MIN));
         if (date.getTime() < now.getTime()) {
             // past date
             from = to = toStringUTC(date)
@@ -161,6 +162,20 @@ function getAmount(pos, zoom, date) {
         });
 }
 
+function getDatesWithinAnHour(date){
+    var dates = [];
+    for (var i = 0; i < 12; i++) {
+        dates.push(new Date(date.getTime() + FIVE_MIN * i));
+    }
+    return dates
+}
+
+function getAmountsWithinAnHour(pos, zoom, date) {
+    return Promise.all(getDatesWithinAnHour(date).map(function (date) {
+        return getAmount(pos, zoom, date);
+    }));
+}
+
 var COLOR_MM = [
     {color: '151515ff', amount: 80},
     {color: '282828ff', amount: 50},
@@ -189,3 +204,5 @@ exports.Pos = Pos;
 exports.MAP_TYPE = MAP_TYPE;
 exports.downloadAndMarkPoint = downloadAndMarkPoint;
 exports.getAmount = getAmount;
+exports.getAmountsWithinAnHour = getAmountsWithinAnHour;
+exports.getDatesWithinAnHour = getDatesWithinAnHour;
