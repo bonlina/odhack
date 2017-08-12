@@ -5,6 +5,7 @@ var app = express();
 
 app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
+app.use('/static', express.static(__dirname + '/static'));
 
 app.get('/', function (req, res) {
     res.sendFile(__dirname + "/weathermap.html");
