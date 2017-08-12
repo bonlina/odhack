@@ -141,7 +141,7 @@ function downloadAndMarkPoint(pos, type, zoom, date, fileName) {
 
 
 function getAmount(pos, zoom, date) {
-    var fileName = "temp/"+Math.random()+".png";
+    var fileName = "temp/" + Math.random() + ".png";
     var map = pos.mapToImage(zoom);
     if (zoom >= 7) {
         console.error("Resolution for amount should be Maximum 6");
@@ -153,17 +153,18 @@ function getAmount(pos, zoom, date) {
                 Jimp.read(fileName, function (err, image) {
                     if (err) {
                         //throw err;
+                        console.error("downloadMap: failed to read" + fileName, err);
                     } else {
-                    var color = image.getPixelColor(map.pixLong, map.pixLat);
-                    var amount = colorToAmount(color);
-                    resolve(amount);
+                        var color = image.getPixelColor(map.pixLong, map.pixLat);
+                        var amount = colorToAmount(color);
+                        resolve(amount);
                     }
                 });
             });
         });
 }
 
-function getDatesWithinAnHour(date){
+function getDatesWithinAnHour(date) {
     return [date]; // temporarily
     var dates = [];
     for (var i = 0; i < 12; i++) {
@@ -190,6 +191,10 @@ var COLOR_MM = [
 ];
 
 function colorToAmount(color) {
+    if (color === 0) {
+        // If map only contains 0, the image seems to be filled with 0x00000000 instead of 0xffffff00
+        return 0;
+    }
     color = color.toString(16);
     for (var val of COLOR_MM) {
         if (color <= val.color) {
