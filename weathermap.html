@@ -387,8 +387,8 @@
             type: 'POST',
             url: "/api",
             data: {
-                //  unixtime: new Date().getTime(),
-                unixtime: new Date("2017-08-06T09:40+0900").getTime(),
+                unixtime: new Date().getTime(),
+                // unixtime: new Date("2017-08-06T09:40+0900").getTime(),
                 pos: [{lat: latLng.lat(), lng: latLng.lng()}]
             },
             success: function (data) {
