@@ -97,6 +97,12 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
         anchor: new google.maps.Point(0, 0) // anchor
     };
 
+    var owm_icon = {
+        scaledSize: new google.maps.Size(50, 50), // scaled size
+        origin: new google.maps.Point(0, 0), // origin
+        anchor: new google.maps.Point(0, 0) // anchor
+    };
+
     //alert(directionResult.routes.length);
     var distanceWhenShownLastTime = 99999;
     var myRoute = directionResult.routes[routeIndex].legs[0];
@@ -107,32 +113,21 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
     // when calculating new routes.
     showHighs(myRoute, map);
 
-    for (var i = 0; i < myRoute.steps.length; i++) {
+    var getODWeatherPromises = [];
+    var getOWMWeatherPromises = [];
+    var od_weather = new Array(myRoute.steps.length);
+    var owm_weather = new Array(myRoute.steps.length);
+    var weather_datapoint_cnt = 0;
 
+    for (var i = 0; i < myRoute.steps.length; i++) {
         var step = myRoute.steps[i];
         var start_location = step.start_location;
 
-        if ((i!=0) && ((distanceWhenShownLastTime > (400 * map.getZoom()) || (i==1) || (i == myRoute.steps.length-2)))) {
-            // show weather
-            mm = 0;
-            getWeather(start_location, function(start_location, markerArray, i) {
-                    return function(data) {
-                        mm = data.pos[0].mm;
-                        var marker = new google.maps.Marker;
-                        markerArray.push(marker);
-                        marker.setPosition(start_location);
-                        if (mm == 0) {
-                            marker.setIcon(sun);
-                        } else if (mm == 1) {
-                            marker.setIcon(sun_under_cloud_and_rain);
-                        } else {
-                            marker.setIcon(heavy_rain);
-                        }
-                        marker.setMap(map);
-                        attachInstructionText(stepDisplay, marker, myRoute.steps[i].instructions, map);
-                    }
-                }(start_location, markerArray, i)
-            );
+        if ((i!==0) && ((distanceWhenShownLastTime > (400 * map.getZoom()) || (i===1) || (i === myRoute.steps.length-2)))) {
+            // collect weather data from different sources
+            getODWeatherPromises.push(getODWeather(start_location, od_weather, weather_datapoint_cnt));
+            getOWMWeatherPromises.push(getOWMWeather_viaCORS(owm_weather, weather_datapoint_cnt));
+            weather_datapoint_cnt += 1;
             distanceWhenShownLastTime = 0;
         } else {
             // don't show weather
@@ -140,6 +135,36 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
         }
 
     }
+    // TODO 1: write trash to remember all queries, not only the last one
+    // TODO 2: use distanceWhenShownLastTime and show waeather in time
+    Promise.all(getODWeatherPromises).then(values => {
+        for (var i = 0; i < values.length; i++) {
+            mm = values[i].pos[0].mm;
+            var marker = new google.maps.Marker;
+            markerArray.push(marker);
+            marker.setPosition(start_location);
+            if (mm === 0) {
+                marker.setIcon(sun_under_cloud_and_rain);
+            } else if (mm === 1) {
+                marker.setIcon(sun_under_cloud_and_rain);
+            } else {
+                marker.setIcon(sun_under_cloud_and_rain);
+            }
+            //marker.setMap(map); // TODO: start to use open data.
+        }
+    });
+    // TODO: write trash to remember all queries, not only the last one
+    Promise.all(getOWMWeatherPromises).then(values => {
+        for (var i = 0; i < values.length; i++) {
+            icon = JSON.parse(values[i]).list[0].weather[0].icon;
+            var marker = new google.maps.Marker;
+            markerArray.push(marker);
+            marker.setPosition(start_location);
+            owm_icon.url = "http://openweathermap.org/img/w/" + icon + ".png";
+            marker.setIcon(owm_icon);
+            marker.setMap(map);
+        }
+    });
 }
 
 function attachInstructionText(stepDisplay, marker, text, map) {
@@ -151,20 +176,69 @@ function attachInstructionText(stepDisplay, marker, text, map) {
     });
 }
 
-function getWeather(latLng, callback) {
-    $.ajax({
-        type: 'POST',
-        url: "/api",
-        data: {
-            unixtime: new Date().getTime(),
-            // unixtime: new Date("2017-08-06T09:40+0900").getTime(),
-            pos: [{lat: latLng.lat(), lng: latLng.lng()}]
-        },
-        success: function (data) {
-            callback(data);
-            console.log("Got " + data.length + " results");
-            data.pos.forEach(function (data) { console.log(data); });
-        },
-        dataType: "json"
+function getODWeather(latLng, od_weather, i) {
+    return new Promise(function (resolve) {
+        $.ajax({
+            type: 'POST',
+            url: "/api",
+            data: {
+                unixtime: getTimeNow(),
+                pos: [{lat: latLng.lat(), lng: latLng.lng()}]
+            },
+            success: function (data) {
+                od_weather[i] = data;
+                resolve(data);
+            },
+            dataType: "json"
+        });
+    })
+}
+
+function getTimeNow() {
+    return new Date("2017-08-12T09:40+0900").getTime();
+    // return new Date(Date.now() + 1000);  // for the time N milliseconds from now
+}
+
+// Create the XHR object.
+function createCORSRequest(method, url) {
+    var xhr = new XMLHttpRequest();
+    if ("withCredentials" in xhr) {
+        // XHR for Chrome/Firefox/Opera/Safari.
+        xhr.open(method, url, true);
+    } else if (typeof XDomainRequest !== "undefined") {
+        // XDomainRequest for IE.
+        xhr = new XDomainRequest();
+        xhr.open(method, url);
+    } else {
+        // CORS not supported.
+        xhr = null;
+    }
+    return xhr;
+}
+
+// Make the actual CORS request
+function getOWMWeather_viaCORS(owm_weather, i) {
+    return new Promise(function (resolve) {
+        // This is a sample server that supports CORS.
+        var url = 'http://api.openweathermap.org/data/2.5/forecast?lat=35&lon=139&units=metric&appid=cbcafe8bb09e522c0226c7a4b5ca05cc';
+
+        var xhr = createCORSRequest('GET', url);
+        if (!xhr) {
+            console.log('CORS not supported');
+            return;
+        }
+
+        // Response handlers
+        xhr.onload = function () {
+            owm_weather[i] = xhr.responseText;
+            //console.log('Response from CORS request to ' + text);
+            resolve(xhr.responseText);
+        };
+
+        xhr.onerror = function () {
+            console.log('Woops, there was an error making the request.');
+        };
+
+        xhr.send();
     });
 }
