@@ -1,3 +1,6 @@
+var USE_NOW_CAST = true;
+var USE_OPEN_WEATHER_MAP = false;
+
 function initMap() {
     // change mode (walking/driving)
     $('input[type="radio"]').on('change', function(e) {
@@ -72,6 +75,7 @@ function calculateAndDisplayRoute(directionsDisplay, directionsService, markerAr
     });
 }
 
+// TODO: this is called many times at start up & changing places. Make it once
 function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
     // alert(routeIndex);
 
@@ -83,21 +87,21 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
 
 
     var sun = {
-        url: "https://lh5.googleusercontent.com/_3TrhfHItLZzJlpYsQDvYvh_lDq0DoIrYPT3oIExtoy6f1BT9s5dj-6FbV3_sjFtgNqajhIMgAQUomo=w2560-h1452",
+        url: "/static/icons/sunny.png",
         scaledSize: new google.maps.Size(50, 50), // scaled size
         origin: new google.maps.Point(0, 0), // origin
         anchor: new google.maps.Point(0, 0) // anchor
     };
 
     var sun_under_cloud_and_rain = {
-        url: "http://profigrupp-izh.ru/images/pattern.png?crc=3972484510",
+        url: "/static/icons/cloud.png",
         scaledSize: new google.maps.Size(50, 50), // scaled size
         origin: new google.maps.Point(0, 0), // origin
         anchor: new google.maps.Point(0, 0) // anchor
     };
 
     var heavy_rain = {
-        url: "https://lh3.googleusercontent.com/KTDAIa7D-5zra-bd2riC2PaOR69WA4E8IrAwtM0Z1Mwuhq_z5nTaYJVMZD3dSVofrjm_wnlalXDFDpg=w2560-h1452",
+        url: "/static/icons/heavy%20rain.png",
         scaledSize: new google.maps.Size(50, 50), // scaled size
         origin: new google.maps.Point(0, 0), // origin
         anchor: new google.maps.Point(0, 0) // anchor
@@ -124,41 +128,48 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
     var od_weather = new Array(myRoute.steps.length);
     var owm_weather = new Array(myRoute.steps.length);
     var weather_datapoint_cnt = 0;
-
+    var time = new Date().getTime();
+    var skipped = 0;
     for (var i = 0; i < myRoute.steps.length; i++) {
         var step = myRoute.steps[i];
         var start_location = step.start_location;
 
         if ((i!==0) && ((distanceWhenShownLastTime > (400 * map.getZoom()) || (i===1) || (i === myRoute.steps.length-2)))) {
             // collect weather data from different sources
-            getODWeatherPromises.push(getODWeather(start_location, od_weather, weather_datapoint_cnt));
-            getOWMWeatherPromises.push(getOWMWeather_viaCORS(start_location, owm_weather, weather_datapoint_cnt));
+            if (USE_NOW_CAST) {
+                getODWeatherPromises.push(getODWeather(start_location, od_weather, weather_datapoint_cnt, time));
+            }
+            if (USE_OPEN_WEATHER_MAP) {
+                getOWMWeatherPromises.push(getOWMWeather_viaCORS(start_location, owm_weather, weather_datapoint_cnt));
+            }
             weather_datapoint_cnt += 1;
             distanceWhenShownLastTime = 0;
         } else {
             // don't show weather
             distanceWhenShownLastTime = distanceWhenShownLastTime + step.distance.value;
+            skipped++;
         }
-
+        time += step.duration.value * 1000;
     }
-    // TODO 1: write trash to remember all queries, not only the last one
-    // TODO 2: use distanceWhenShownLastTime and show waeather in time
-    Promise.all(getODWeatherPromises).then(values => {
-        for (var i = 0; i < values.length; i++) {
-            mm = values[i].pos[0].mm;
+    console.log("show", (myRoute.steps.length - skipped), "/", myRoute.steps.length, "steps");
+
+    getODWeatherPromises.map(promise =>
+        promise.then(({data, latLng, time}) => {
+            var mm = data.pos[0].mm;
             var marker = new google.maps.Marker;
             markerArray.push(marker);
-            marker.setPosition(start_location);
+            marker.setPosition(latLng);
             if (mm === 0) {
-                marker.setIcon(sun_under_cloud_and_rain);
+                marker.setIcon(sun);
             } else if (mm === 1) {
                 marker.setIcon(sun_under_cloud_and_rain);
             } else {
-                marker.setIcon(sun_under_cloud_and_rain);
+                marker.setIcon(heavy_rain);
             }
-            //marker.setMap(map); // TODO: start to use open data.
-        }
-    });
+            marker.setMap(map);
+            console.log(new Date(time).toISOString(), ":", mm, "mm", latLng.toString());
+        })
+    );
     // TODO: write trash to remember all queries, not only the last one
     Promise.all(getOWMWeatherPromises).then(values => {
         for (var i = 0; i < values.length; i++) {
@@ -183,18 +194,18 @@ function attachInstructionText(stepDisplay, marker, text, map) {
     });
 }
 
-function getODWeather(latLng, od_weather, i) {
+function getODWeather(latLng, od_weather, i, time) {
     return new Promise(function (resolve) {
         $.ajax({
             type: 'POST',
             url: "/api",
             data: {
-                unixtime: getTimeNow(),
+                unixtime: time,
                 pos: [{lat: latLng.lat(), lng: latLng.lng()}]
             },
             success: function (data) {
                 od_weather[i] = data;
-                resolve(data);
+                resolve({data, latLng, time});
             },
             dataType: "json"
         });
