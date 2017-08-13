@@ -2,12 +2,6 @@ var USE_NOW_CAST = true;
 var USE_OPEN_WEATHER_MAP = false;
 
 function initMap() {
-    // change mode (walking/driving)
-    $('input[type="radio"]').on('change', function(e) {
-        document.getElementById('mode').value = this.id;
-        calculateAndDisplayRoute(directionsDisplay, directionsService, markerArray, stepDisplay, map);
-    });
-
     var markerArray = [];
 
     // Instantiate a directions service.
@@ -35,9 +29,20 @@ function initMap() {
     var previousRouteIndex = -1;
     directionsDisplay.addListener('directions_changed', function() {
         var directions = directionsDisplay.getDirections();
-        if (previousDirections != directions || previousRouteIndex != this.getRouteIndex()) {
-//            console.log("directions_changed");
+        if (previousDirections !== directions || previousRouteIndex !== this.getRouteIndex()) {
+            console.log("directions_changed");
             showSteps(directionsDisplay.getDirections(), markerArray, stepDisplay, map, 0);
+            previousDirections = directions;
+            previousRouteIndex = this.getRouteIndex();
+        } else {
+//            console.log("skip directions_changed");
+        }
+    });
+
+    directionsDisplay.addListener('routeindex_changed', function() {
+        var directions = directionsDisplay.getDirections();
+        if (previousDirections !== directions || previousRouteIndex !== this.getRouteIndex()) {
+            showSteps(directionsDisplay.getDirections(), markerArray, stepDisplay, map, this.getRouteIndex());
             previousDirections = directions;
             previousRouteIndex = this.getRouteIndex();
         } else {
@@ -45,16 +50,9 @@ function initMap() {
         }
     });
 
-    directionsDisplay.addListener('routeindex_changed', function() {
-        var directions = directionsDisplay.getDirections();
-        if (previousDirections != directions || previousRouteIndex != this.getRouteIndex()) {
-//            console.log("routeindex_changed", this.getRouteIndex());
-            showSteps(directionsDisplay.getDirections(), markerArray, stepDisplay, map, this.getRouteIndex());
-            previousDirections = directions;
-            previousRouteIndex = this.getRouteIndex();
-        } else {
-//            console.log("skip route_change");
-        }
+    // change mode (walking/driving)
+    $('input[type="radio"]').on('change', function(e) {
+        document.getElementById('mode').value = this.id;
     });
 
     // Display the route between the initial start and end selections.
@@ -70,13 +68,15 @@ function removeAllMarkers(markerArray) {
 }
 
 function calculateAndDisplayRoute(directionsDisplay, directionsService, markerArray, stepDisplay, map) {
+    console.log("call calculateAndDisplayRoute");
     // First, remove any existing markers from the map
     removeAllMarkers(markerArray);
+    var directions = directionsDisplay.getDirections();
 
     // Retrieve the start and end locations and create a DirectionsRequest.
     directionsService.route({
-        origin: document.getElementById('origin-input').value,
-        destination: document.getElementById('destination-input').value,
+        origin: (directions) ? directions.request.origin : document.getElementById('origin-input').value,
+        destination: (directions) ? directions.request.destination : document.getElementById('destination-input').value,
         travelMode: document.getElementById('mode').value,
         provideRouteAlternatives: true,
         //region: 'ja',

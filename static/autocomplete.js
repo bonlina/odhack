@@ -64,6 +64,7 @@ AutocompleteDirectionsHandler.prototype.setupPlaceChangedListener = function(aut
 };
 
 AutocompleteDirectionsHandler.prototype.route = function() {
+    console.log("Create a route because of autocomplete");
     calculateAndDisplayRoute(
         this.directionsDisplay,
         this.directionsService,
