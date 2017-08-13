@@ -31,11 +31,30 @@ function initMap() {
     // Instantiate an info window to hold step text.
     var stepDisplay = new google.maps.InfoWindow;
 
+    var previousDirections = null;
+    var previousRouteIndex = -1;
     directionsDisplay.addListener('directions_changed', function() {
-        showSteps(directionsDisplay.getDirections(), markerArray, stepDisplay, map, 0);
+        var directions = directionsDisplay.getDirections();
+        if (previousDirections != directions || previousRouteIndex != this.getRouteIndex()) {
+//            console.log("directions_changed");
+            showSteps(directionsDisplay.getDirections(), markerArray, stepDisplay, map, 0);
+            previousDirections = directions;
+            previousRouteIndex = this.getRouteIndex();
+        } else {
+//            console.log("skip route_change");
+        }
     });
+
     directionsDisplay.addListener('routeindex_changed', function() {
-        showSteps(directionsDisplay.getDirections(), markerArray, stepDisplay, map, this.getRouteIndex());
+        var directions = directionsDisplay.getDirections();
+        if (previousDirections != directions || previousRouteIndex != this.getRouteIndex()) {
+//            console.log("routeindex_changed", this.getRouteIndex());
+            showSteps(directionsDisplay.getDirections(), markerArray, stepDisplay, map, this.getRouteIndex());
+            previousDirections = directions;
+            previousRouteIndex = this.getRouteIndex();
+        } else {
+//            console.log("skip route_change");
+        }
     });
 
     // Display the route between the initial start and end selections.
