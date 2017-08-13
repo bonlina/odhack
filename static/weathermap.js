@@ -41,12 +41,15 @@ function initMap() {
     calculateAndDisplayRoute(directionsDisplay, directionsService, markerArray, stepDisplay, map);
 }
 
+function removeAllMarkers(markerArray) {
+    while (markerArray.length > 0) {
+        markerArray.pop().setMap(null);
+    }
+}
+
 function calculateAndDisplayRoute(directionsDisplay, directionsService, markerArray, stepDisplay, map) {
     // First, remove any existing markers from the map
-    for (var i = 0; i < markerArray.length; i++) {
-        markerArray[i].setMap(null);
-    }
-    markerArray = [];
+    removeAllMarkers(markerArray);
 
     // Retrieve the start and end locations and create a DirectionsRequest.
     directionsService.route({
@@ -80,9 +83,7 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
     // alert(routeIndex);
 
     // First, remove any existing markers from the map.
-    while(markerArray.length) {
-        markerArray.pop().setMap(null);
-    }
+    removeAllMarkers(markerArray);
     map.clearOverlays;
 
 
