@@ -157,15 +157,17 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
     var skipped = 0;
     for (var i = 0; i < myRoute.steps.length; i++) {
         var step = myRoute.steps[i];
-        var start_location = step.start_location;
+        var is_the_last_step = i === myRoute.steps.length-1;
 
-        if ((i!==0) && ((distanceWhenShownLastTime > (400 * map.getZoom()) || (i===1) || (i === myRoute.steps.length-2)))) {
+        if ((i!==0) && ((distanceWhenShownLastTime > (400 * map.getZoom()) || (i===1) || is_the_last_step))) {
+            var location = (is_the_last_step) ? step.end_location : step.start_location;
+
             // collect weather data from different sources
             if (USE_NOW_CAST) {
-                getODWeatherPromises.push(getODWeather(start_location, od_weather, weather_datapoint_cnt, time));
+                getODWeatherPromises.push(getODWeather(location, od_weather, weather_datapoint_cnt, time));
             }
             if (USE_OPEN_WEATHER_MAP) {
-                getOWMWeatherPromises.push(getOWMWeather_viaCORS(start_location, owm_weather, weather_datapoint_cnt, time));
+                getOWMWeatherPromises.push(getOWMWeather_viaCORS(location, owm_weather, weather_datapoint_cnt, time));
             }
             weather_datapoint_cnt += 1;
             distanceWhenShownLastTime = 0;
