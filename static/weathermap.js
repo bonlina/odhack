@@ -1,7 +1,8 @@
 var USE_NOW_CAST = true;
 var USE_OPEN_WEATHER_MAP = true;
-var USE_OPEN_WEATHER_MAP_SAMPLE_DATA = true; // Use sample data so that we don't get API limitation
+var USE_OPEN_WEATHER_MAP_SAMPLE_DATA = false; // Use sample data so that we don't get API limitation
 var OPEN_WEATHER_MAP_TIME_WINDOW_HOURS = 3;
+var HOW_OFTEN_SHOW_WEATHER_DATA = 15; // if smaller then more ofter
 
 function initMap() {
     var markerArray = [];
@@ -58,7 +59,7 @@ function initMap() {
     });
 
     // Display the route between the initial start and end selections.
-    calculateAndDisplayRoute(directionsDisplay, directionsService, markerArray, stepDisplay, map);
+    calculateAndDisplayRoute(directionsDisplay, directionsService, markerArray, stepDisplay, map, null, null);
 
     new AutocompleteDirectionsHandler(directionsDisplay, directionsService, markerArray, stepDisplay, map);
 }
@@ -69,16 +70,29 @@ function removeAllMarkers(markerArray) {
     }
 }
 
-function calculateAndDisplayRoute(directionsDisplay, directionsService, markerArray, stepDisplay, map) {
+function calculateAndDisplayRoute(directionsDisplay, directionsService, markerArray, stepDisplay, map, originPlace, destinationPlace) {
     console.log("call calculateAndDisplayRoute");
     // First, remove any existing markers from the map
     removeAllMarkers(markerArray);
     var directions = directionsDisplay.getDirections();
 
+    var origin;
+    if (originPlace) {
+        origin = originPlace;
+    } else {
+        origin = (directions) ? directions.request.origin : document.getElementById('origin-input').value;
+    }
+    var destination;
+    if (destinationPlace) {
+        destination = destinationPlace;
+    } else {
+        destination = (directions) ? directions.request.destination : document.getElementById('destination-input').value;
+    }
+
     // Retrieve the start and end locations and create a DirectionsRequest.
     directionsService.route({
-        origin: (directions) ? directions.request.origin : document.getElementById('origin-input').value,
-        destination: (directions) ? directions.request.destination : document.getElementById('destination-input').value,
+        origin: origin,
+        destination: destination,
         travelMode: document.getElementById('mode').value,
         provideRouteAlternatives: true,
         //region: 'ja',
@@ -113,21 +127,21 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
 
     var sun = {
         url: "/static/icons/sunny.png",
-        scaledSize: new google.maps.Size(50, 50), // scaled size
+        scaledSize: new google.maps.Size(30, 30), // scaled size
         origin: new google.maps.Point(0, 0), // origin
         anchor: new google.maps.Point(0, 0) // anchor
     };
 
     var sun_under_cloud_and_rain = {
         url: "/static/icons/cloud.png",
-        scaledSize: new google.maps.Size(50, 50), // scaled size
+        scaledSize: new google.maps.Size(30, 30), // scaled size
         origin: new google.maps.Point(0, 0), // origin
         anchor: new google.maps.Point(0, 0) // anchor
     };
 
     var heavy_rain = {
         url: "/static/icons/heavy%20rain.png",
-        scaledSize: new google.maps.Size(50, 50), // scaled size
+        scaledSize: new google.maps.Size(30, 30), // scaled size
         origin: new google.maps.Point(0, 0), // origin
         anchor: new google.maps.Point(0, 0) // anchor
     };
@@ -155,11 +169,12 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
     var weather_datapoint_cnt = 0;
     var time = new Date().getTime();
     var skipped = 0;
+
     for (var i = 0; i < myRoute.steps.length; i++) {
         var step = myRoute.steps[i];
         var is_the_last_step = i === myRoute.steps.length-1;
 
-        if ((i!==0) && ((distanceWhenShownLastTime > (400 * map.getZoom()) || (i===1) || is_the_last_step))) {
+        if ((i!==0) && (((distanceWhenShownLastTime > HOW_OFTEN_SHOW_WEATHER_DATA * ZOOMS[map.getZoom()]) || (i===1) || is_the_last_step))) {
             var location = (is_the_last_step) ? step.end_location : step.start_location;
 
             // collect weather data from different sources

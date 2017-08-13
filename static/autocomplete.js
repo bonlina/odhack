@@ -5,8 +5,6 @@ function AutocompleteDirectionsHandler(directionsDisplay, directionsService, mar
     this.map = map;
     this.markerArray = markerArray;
     this.stepDisplay = stepDisplay;
-    this.originPlaceId = null;
-    this.destinationPlaceId = null;
     this.travelMode = 'WALKING';
     var originInput = document.getElementById('origin-input');
     var destinationInput = document.getElementById('destination-input');
@@ -70,6 +68,8 @@ AutocompleteDirectionsHandler.prototype.route = function() {
         this.directionsService,
         this.markerArray,
         this.stepDisplay,
-        this.map
+        this.map,
+        document.getElementById('origin-input').value,
+        document.getElementById('destination-input').value
     );
 };
