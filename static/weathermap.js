@@ -128,6 +128,7 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
     var od_weather = new Array(myRoute.steps.length);
     var owm_weather = new Array(myRoute.steps.length);
     var weather_datapoint_cnt = 0;
+    var time = new Date().getTime();
     var skipped = 0;
     for (var i = 0; i < myRoute.steps.length; i++) {
         var step = myRoute.steps[i];
@@ -136,7 +137,7 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
         if ((i!==0) && ((distanceWhenShownLastTime > (400 * map.getZoom()) || (i===1) || (i === myRoute.steps.length-2)))) {
             // collect weather data from different sources
             if (USE_NOW_CAST) {
-                getODWeatherPromises.push(getODWeather(start_location, od_weather, weather_datapoint_cnt));
+                getODWeatherPromises.push(getODWeather(start_location, od_weather, weather_datapoint_cnt, time));
             }
             if (USE_OPEN_WEATHER_MAP) {
                 getOWMWeatherPromises.push(getOWMWeather_viaCORS(start_location, owm_weather, weather_datapoint_cnt));
@@ -148,13 +149,12 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
             distanceWhenShownLastTime = distanceWhenShownLastTime + step.distance.value;
             skipped++;
         }
-
+        time += step.duration.value * 1000;
     }
     console.log("show", (myRoute.steps.length - skipped), "/", myRoute.steps.length, "steps");
 
-    // TODO: use distanceWhenShownLastTime and show waeather in time
     getODWeatherPromises.map(promise =>
-        promise.then(({data, latLng}) => {
+        promise.then(({data, latLng, time}) => {
             var mm = data.pos[0].mm;
             var marker = new google.maps.Marker;
             markerArray.push(marker);
@@ -167,7 +167,7 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
                 marker.setIcon(heavy_rain);
             }
             marker.setMap(map);
-            console.log("mark", mm, "mm at", latLng.toString());
+            console.log(new Date(time).toISOString(), ":", mm, "mm", latLng.toString());
         })
     );
     // TODO: write trash to remember all queries, not only the last one
@@ -194,18 +194,18 @@ function attachInstructionText(stepDisplay, marker, text, map) {
     });
 }
 
-function getODWeather(latLng, od_weather, i) {
+function getODWeather(latLng, od_weather, i, time) {
     return new Promise(function (resolve) {
         $.ajax({
             type: 'POST',
             url: "/api",
             data: {
-                unixtime: getTimeNow(),
+                unixtime: time,
                 pos: [{lat: latLng.lat(), lng: latLng.lng()}]
             },
             success: function (data) {
                 od_weather[i] = data;
-                resolve({data: data, latLng: latLng});
+                resolve({data, latLng, time});
             },
             dataType: "json"
         });
