@@ -1,5 +1,5 @@
 /* Always set the map height explicitly to define the size of the div
-    * element that contains the map. */
+ * element that contains the map. */
 #map {
     height: 80%;
 }
@@ -30,12 +30,6 @@ html, body {
     padding: 0 11px 0 13px;
     text-overflow: ellipsis;
     width: 200px;
-}
-#origin-input{
-    position: absolute;
-    top: 50px;
-    left: 114px;
-    z-index: 100;
 }
 
 #origin-input:focus,

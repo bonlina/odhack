@@ -16,6 +16,7 @@ function initMap() {
     // Create a map and center it on Manhattan.
     var map = new google.maps.Map(document.getElementById('map'), {
         zoom: 13,
+        // TODO: use location of user https://developers.google.com/maps/documentation/javascript/geolocation
         center: {lat: 40.771, lng: -73.974},
         mapTypeId: 'terrain'
     });
@@ -39,6 +40,8 @@ function initMap() {
 
     // Display the route between the initial start and end selections.
     calculateAndDisplayRoute(directionsDisplay, directionsService, markerArray, stepDisplay, map);
+
+    new AutocompleteDirectionsHandler(directionsDisplay, directionsService, markerArray, stepDisplay, map);
 }
 
 function removeAllMarkers(markerArray) {

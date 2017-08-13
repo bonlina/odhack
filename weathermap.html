@@ -12,12 +12,16 @@
 <input id="origin-input" class="controls" value="Nagasaki station, Nagasaki" placeholder="Enter an origin location">
 <input id="destination-input" class="controls" value="Nagasaki university hospital, Nagasaki" placeholder="Enter a destination location">
 
-<div id="mode-selector" class="controls">
-    <input type="radio" name="mode-type" id="WALKING" checked="checked">
-    <label for="WALKING">Walking</label>
-    <input type="radio" name="mode-type" id="DRIVING">
-    <label for="DRIVING">Driving</label>
-</div>
+    <div id="mode-selector" class="controls">
+        <input type="radio" name="type" id="changemode-walking" checked="checked">
+        <label for="changemode-walking">Walking</label>
+
+        <input type="radio" name="type" id="changemode-transit">
+        <label for="changemode-transit">Transit</label>
+
+        <input type="radio" name="type" id="changemode-driving">
+        <label for="changemode-driving">Driving</label>
+    </div>
 
 <div id="map" style="float:left;width:70%; height:80%"></div>
 <div id="directionsPanel" style="float:right;width:30%"></div>
@@ -30,6 +34,7 @@
         crossorigin="anonymous"
 ></script>
 <script src="static/promise-6.1.0.min.js"></script>
+<script src="static/autocomplete.js"></script>
 <script src="static/elevation.js"></script>
 <script src="static/weathermap.js"></script>
 <script>
