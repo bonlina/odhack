@@ -1,4 +1,10 @@
 function initMap() {
+    // change mode (walking/driving)
+    $('input[type="radio"]').on('change', function(e) {
+        document.getElementById('mode').value = this.id;
+        calculateAndDisplayRoute(directionsDisplay, directionsService, markerArray, stepDisplay, map);
+    });
+
     var markerArray = [];
 
     // Instantiate a directions service.
@@ -45,11 +51,11 @@ function calculateAndDisplayRoute(directionsDisplay, directionsService, markerAr
         destination: document.getElementById('destination-input').value,
         travelMode: document.getElementById('mode').value,
         provideRouteAlternatives: true,
-        region: 'ja',
+        //region: 'ja',
         unitSystem: google.maps.UnitSystem.METRIC,
         transitOptions: {
             //arrivalTime: Date,
-            departureTime: new Date(Date.now() + 1000),  // for the time N milliseconds from now.
+            departureTime: getTimeNow(),  // for the time N milliseconds from now.
             modes: ['RAIL', 'BUS', 'SUBWAY', 'TRAIN', 'TRAM'],
             routingPreference: 'FEWER_TRANSFERS'
         }
@@ -167,6 +173,7 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
     });
 }
 
+// TODO use it
 function attachInstructionText(stepDisplay, marker, text, map) {
     google.maps.event.addListener(marker, 'click', function() {
         // Open an info window when the marker is clicked on, containing the text
@@ -195,24 +202,23 @@ function getODWeather(latLng, od_weather, i) {
 }
 
 function getTimeNow() {
-    return new Date("2017-08-12T09:40+0900").getTime();
-    // return new Date(Date.now() + 1000);  // for the time N milliseconds from now
+    return new Date(Date.now() + 1000);  // for the time N milliseconds from now
 }
 
 // Create the XHR object.
 function createCORSRequest(method, url) {
     var xhr = new XMLHttpRequest();
-    if ("withCredentials" in xhr) {
-        // XHR for Chrome/Firefox/Opera/Safari
-        xhr.open(method, url, true);
-    } else if (typeof XDomainRequest !== "undefined") {
-        // XDomainRequest for IE
-        xhr = new XDomainRequest();
-        xhr.open(method, url);
-    } else {
-        // CORS not supported
-        xhr = null;
-    }
+    // if ("withCredentials" in xhr) {
+    //     // XHR for Chrome/Firefox/Opera/Safari
+    //     xhr.open(method, url, true);
+    // } else if (typeof XDomainRequest !== "undefined") {
+    //     // XDomainRequest for IE
+    //     xhr = new XDomainRequest();
+    //     xhr.open(method, url);
+    // } else {
+    //     // CORS not supported
+    //     xhr = null;
+    // }
     return xhr;
 }
 
@@ -239,6 +245,6 @@ function getOWMWeather_viaCORS(latLng, owm_weather, i) {
             console.log('Woops, there was an error making the request.');
         };
 
-        xhr.send();
+        //xhr.send();
     });
 }
