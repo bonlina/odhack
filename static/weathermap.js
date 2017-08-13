@@ -1,3 +1,6 @@
+var USE_NOW_CAST = true;
+var USE_OPEN_WEATHER_MAP = false;
+
 function initMap() {
     // change mode (walking/driving)
     $('input[type="radio"]').on('change', function(e) {
@@ -72,6 +75,7 @@ function calculateAndDisplayRoute(directionsDisplay, directionsService, markerAr
     });
 }
 
+// TODO: this is called many times at start up & changing places. Make it once
 function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
     // alert(routeIndex);
 
@@ -124,41 +128,48 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
     var od_weather = new Array(myRoute.steps.length);
     var owm_weather = new Array(myRoute.steps.length);
     var weather_datapoint_cnt = 0;
-
+    var skipped = 0;
     for (var i = 0; i < myRoute.steps.length; i++) {
         var step = myRoute.steps[i];
         var start_location = step.start_location;
 
         if ((i!==0) && ((distanceWhenShownLastTime > (400 * map.getZoom()) || (i===1) || (i === myRoute.steps.length-2)))) {
             // collect weather data from different sources
-            getODWeatherPromises.push(getODWeather(start_location, od_weather, weather_datapoint_cnt));
-            getOWMWeatherPromises.push(getOWMWeather_viaCORS(start_location, owm_weather, weather_datapoint_cnt));
+            if (USE_NOW_CAST) {
+                getODWeatherPromises.push(getODWeather(start_location, od_weather, weather_datapoint_cnt));
+            }
+            if (USE_OPEN_WEATHER_MAP) {
+                getOWMWeatherPromises.push(getOWMWeather_viaCORS(start_location, owm_weather, weather_datapoint_cnt));
+            }
             weather_datapoint_cnt += 1;
             distanceWhenShownLastTime = 0;
         } else {
             // don't show weather
             distanceWhenShownLastTime = distanceWhenShownLastTime + step.distance.value;
+            skipped++;
         }
 
     }
-    // TODO 1: write trash to remember all queries, not only the last one
-    // TODO 2: use distanceWhenShownLastTime and show waeather in time
-    Promise.all(getODWeatherPromises).then(values => {
-        for (var i = 0; i < values.length; i++) {
-            mm = values[i].pos[0].mm;
+    console.log("show", (myRoute.steps.length - skipped), "/", myRoute.steps.length, "steps");
+
+    // TODO: use distanceWhenShownLastTime and show waeather in time
+    getODWeatherPromises.map(promise =>
+        promise.then(({data, latLng}) => {
+            var mm = data.pos[0].mm;
             var marker = new google.maps.Marker;
             markerArray.push(marker);
-            marker.setPosition(start_location);
+            marker.setPosition(latLng);
             if (mm === 0) {
-                marker.setIcon(sun_under_cloud_and_rain);
+                marker.setIcon(sun);
             } else if (mm === 1) {
                 marker.setIcon(sun_under_cloud_and_rain);
             } else {
-                marker.setIcon(sun_under_cloud_and_rain);
+                marker.setIcon(heavy_rain);
             }
-            //marker.setMap(map); // TODO: start to use open data.
-        }
-    });
+            marker.setMap(map);
+            console.log("mark", mm, "mm at", latLng.toString());
+        })
+    );
     // TODO: write trash to remember all queries, not only the last one
     Promise.all(getOWMWeatherPromises).then(values => {
         for (var i = 0; i < values.length; i++) {
@@ -194,7 +205,7 @@ function getODWeather(latLng, od_weather, i) {
             },
             success: function (data) {
                 od_weather[i] = data;
-                resolve(data);
+                resolve({data: data, latLng: latLng});
             },
             dataType: "json"
         });
