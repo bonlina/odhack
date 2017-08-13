@@ -1,5 +1,7 @@
 var USE_NOW_CAST = true;
-var USE_OPEN_WEATHER_MAP = false;
+var USE_OPEN_WEATHER_MAP = true;
+var USE_OPEN_WEATHER_MAP_SAMPLE_DATA = true; // Use sample data so that we don't get API limitation
+var OPEN_WEATHER_MAP_TIME_WINDOW_HOURS = 3;
 
 function initMap() {
     var markerArray = [];
@@ -163,7 +165,7 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
                 getODWeatherPromises.push(getODWeather(start_location, od_weather, weather_datapoint_cnt, time));
             }
             if (USE_OPEN_WEATHER_MAP) {
-                getOWMWeatherPromises.push(getOWMWeather_viaCORS(start_location, owm_weather, weather_datapoint_cnt));
+                getOWMWeatherPromises.push(getOWMWeather_viaCORS(start_location, owm_weather, weather_datapoint_cnt, time));
             }
             weather_datapoint_cnt += 1;
             distanceWhenShownLastTime = 0;
@@ -176,7 +178,7 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
     }
     console.log("show", (myRoute.steps.length - skipped), "/", myRoute.steps.length, "steps");
 
-    getODWeatherPromises.map(promise =>
+    Promise.all(getODWeatherPromises.map(promise =>
         promise.then(({data, latLng, time}) => {
             var mm = data.pos[0].mm;
             var marker = new google.maps.Marker;
@@ -191,20 +193,43 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
             }
             marker.setMap(map);
             console.log(new Date(time).toISOString(), ":", mm, "mm", latLng.toString());
+
+            return {data, latLng, time};
         })
-    );
-    // TODO: write trash to remember all queries, not only the last one
-    Promise.all(getOWMWeatherPromises).then(values => {
-        for (var i = 0; i < values.length; i++) {
-            icon = JSON.parse(values[i]).list[0].weather[0].icon;
+    )).then(function(values){
+        // Something to do when everything is done
+        //console.log("all done", values);
+    });
+    getOWMWeatherPromises.map(promise =>
+        promise.then(({data, latLng, time}) => {
+            var nearest = getNearestForecast(data.list, time);
+            console.log("nearest", new Date(nearest.dt*1000).toISOString());
+            var icon = nearest.weather[0].icon;
             var marker = new google.maps.Marker;
             markerArray.push(marker);
-            marker.setPosition(start_location);
+            marker.setPosition(latLng);
             owm_icon.url = "http://openweathermap.org/img/w/" + icon + ".png";
             marker.setIcon(owm_icon);
             marker.setMap(map);
+        })
+    );
+}
+
+function getNearestForecast(list, timeMillis) {
+    if (list.length === 0) {
+        throw "No forecast available";
+    }
+//    console.log("OWM data for", timeMillis, "from", list[0], "to", list[list.length - 1]);
+    var nowSec = timeMillis / 1000 + OPEN_WEATHER_MAP_TIME_WINDOW_HOURS * 60 * 60 / 2;
+    for (var i=list.length-1; i>=0; i--) {
+        var elem = list[i];
+        if (elem.dt < nowSec) {
+//            console.log("OWM data chosen", elem.dt);
+            return elem;
         }
-    });
+    }
+//    console.log("OWM data fallback to first", list[0].dt);
+    return list[0];
 }
 
 // TODO use it
@@ -242,27 +267,28 @@ function getTimeNow() {
 // Create the XHR object.
 function createCORSRequest(method, url) {
     var xhr = new XMLHttpRequest();
-    // if ("withCredentials" in xhr) {
-    //     // XHR for Chrome/Firefox/Opera/Safari
-    //     xhr.open(method, url, true);
-    // } else if (typeof XDomainRequest !== "undefined") {
-    //     // XDomainRequest for IE
-    //     xhr = new XDomainRequest();
-    //     xhr.open(method, url);
-    // } else {
-    //     // CORS not supported
-    //     xhr = null;
-    // }
+    if ("withCredentials" in xhr) {
+        // XHR for Chrome/Firefox/Opera/Safari
+        xhr.open(method, url, true);
+    } else if (typeof XDomainRequest !== "undefined") {
+        // XDomainRequest for IE
+        xhr = new XDomainRequest();
+        xhr.open(method, url);
+    } else {
+        // CORS not supported
+        xhr = null;
+    }
     return xhr;
 }
 
 // Make the actual CORS request
-function getOWMWeather_viaCORS(latLng, owm_weather, i) {
+function getOWMWeather_viaCORS(latLng, owm_weather, i, time) {
     return new Promise(function (resolve) {
         // This is a sample server that supports CORS.
         var url = 'http://api.openweathermap.org/data/2.5/forecast?lat=' + latLng.lat() + '&lon=' + latLng.lng() + '&units=metric&appid=cbcafe8bb09e522c0226c7a4b5ca05cc';
+        var sampleDataUrl = "http://localhost:3000/static/openweathermap.json";
 
-        var xhr = createCORSRequest('GET', url);
+        var xhr = createCORSRequest('GET', USE_OPEN_WEATHER_MAP_SAMPLE_DATA ? sampleDataUrl : url);
         if (!xhr) {
             console.log('CORS not supported');
             return;
@@ -272,13 +298,14 @@ function getOWMWeather_viaCORS(latLng, owm_weather, i) {
         xhr.onload = function () {
             owm_weather[i] = xhr.responseText;
             //console.log('Response from CORS request to ' + text);
-            resolve(xhr.responseText);
+            resolve({latLng, data: JSON.parse(xhr.responseText), time});
         };
 
         xhr.onerror = function () {
             console.log('Woops, there was an error making the request.');
         };
 
-        //xhr.send();
+        console.log('Request OWM for', latLng.toString());
+        xhr.send();
     });
 }
