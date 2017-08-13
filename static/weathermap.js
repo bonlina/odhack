@@ -126,7 +126,7 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
         if ((i!==0) && ((distanceWhenShownLastTime > (400 * map.getZoom()) || (i===1) || (i === myRoute.steps.length-2)))) {
             // collect weather data from different sources
             getODWeatherPromises.push(getODWeather(start_location, od_weather, weather_datapoint_cnt));
-            getOWMWeatherPromises.push(getOWMWeather_viaCORS(owm_weather, weather_datapoint_cnt));
+            getOWMWeatherPromises.push(getOWMWeather_viaCORS(start_location, owm_weather, weather_datapoint_cnt));
             weather_datapoint_cnt += 1;
             distanceWhenShownLastTime = 0;
         } else {
@@ -203,24 +203,24 @@ function getTimeNow() {
 function createCORSRequest(method, url) {
     var xhr = new XMLHttpRequest();
     if ("withCredentials" in xhr) {
-        // XHR for Chrome/Firefox/Opera/Safari.
+        // XHR for Chrome/Firefox/Opera/Safari
         xhr.open(method, url, true);
     } else if (typeof XDomainRequest !== "undefined") {
-        // XDomainRequest for IE.
+        // XDomainRequest for IE
         xhr = new XDomainRequest();
         xhr.open(method, url);
     } else {
-        // CORS not supported.
+        // CORS not supported
         xhr = null;
     }
     return xhr;
 }
 
 // Make the actual CORS request
-function getOWMWeather_viaCORS(owm_weather, i) {
+function getOWMWeather_viaCORS(latLng, owm_weather, i) {
     return new Promise(function (resolve) {
         // This is a sample server that supports CORS.
-        var url = 'http://api.openweathermap.org/data/2.5/forecast?lat=35&lon=139&units=metric&appid=cbcafe8bb09e522c0226c7a4b5ca05cc';
+        var url = 'http://api.openweathermap.org/data/2.5/forecast?lat=' + latLng.lat() + '&lon=' + latLng.lng() + '&units=metric&appid=cbcafe8bb09e522c0226c7a4b5ca05cc';
 
         var xhr = createCORSRequest('GET', url);
         if (!xhr) {
