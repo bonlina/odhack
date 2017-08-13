@@ -83,21 +83,21 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
 
 
     var sun = {
-        url: "https://lh5.googleusercontent.com/_3TrhfHItLZzJlpYsQDvYvh_lDq0DoIrYPT3oIExtoy6f1BT9s5dj-6FbV3_sjFtgNqajhIMgAQUomo=w2560-h1452",
+        url: "/static/icons/sunny.png",
         scaledSize: new google.maps.Size(50, 50), // scaled size
         origin: new google.maps.Point(0, 0), // origin
         anchor: new google.maps.Point(0, 0) // anchor
     };
 
     var sun_under_cloud_and_rain = {
-        url: "http://profigrupp-izh.ru/images/pattern.png?crc=3972484510",
+        url: "/static/icons/cloud.png",
         scaledSize: new google.maps.Size(50, 50), // scaled size
         origin: new google.maps.Point(0, 0), // origin
         anchor: new google.maps.Point(0, 0) // anchor
     };
 
     var heavy_rain = {
-        url: "https://lh3.googleusercontent.com/KTDAIa7D-5zra-bd2riC2PaOR69WA4E8IrAwtM0Z1Mwuhq_z5nTaYJVMZD3dSVofrjm_wnlalXDFDpg=w2560-h1452",
+        url: "/static/icons/heavy%20rain.png",
         scaledSize: new google.maps.Size(50, 50), // scaled size
         origin: new google.maps.Point(0, 0), // origin
         anchor: new google.maps.Point(0, 0) // anchor
