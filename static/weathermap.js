@@ -162,8 +162,6 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
     // when calculating new routes.
     showHighs(myRoute, map);
 
-    var getODWeatherPromises = [];
-    var getOWMWeatherPromises = [];
     var od_weather = new Array(myRoute.steps.length);
     var owm_weather = new Array(myRoute.steps.length);
     var weather_datapoint_cnt = 0;
@@ -172,18 +170,20 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
 
     for (var i = 0; i < myRoute.steps.length; i++) {
         var step = myRoute.steps[i];
-        var is_the_last_step = i === myRoute.steps.length-1;
+        var is_the_last_step = i === myRoute.steps.length - 1;
 
         if ((i!==0) && (((distanceWhenShownLastTime > HOW_OFTEN_SHOW_WEATHER_DATA * ZOOMS[map.getZoom()]) || (i===1) || is_the_last_step))) {
             var location = (is_the_last_step) ? step.end_location : step.start_location;
 
             // collect weather data from different sources
+            var promises = [];
             if (USE_NOW_CAST) {
-                getODWeatherPromises.push(getODWeather(location, od_weather, weather_datapoint_cnt, time));
+                promises.push(getODWeather(location, od_weather, weather_datapoint_cnt, time).then(processNowCast));
             }
             if (USE_OPEN_WEATHER_MAP) {
-                getOWMWeatherPromises.push(getOWMWeather_viaCORS(location, owm_weather, weather_datapoint_cnt, time));
+                promises.push(getOWMWeather_viaCORS(location, owm_weather, weather_datapoint_cnt, time).then(processOpenWeatherMap));
             }
+            Promise.all(promises).then(combineAndMark(location, owm_icon, markerArray, map, time));
             weather_datapoint_cnt += 1;
             distanceWhenShownLastTime = 0;
         } else {
@@ -194,13 +194,21 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
         time += step.duration.value * 1000;
     }
     console.log("show", (myRoute.steps.length - skipped), "/", myRoute.steps.length, "steps");
+}
 
-    Promise.all(getODWeatherPromises.map(promise =>
-        promise.then(({data, latLng, time}) => {
-            var mm = data.pos[0].mm;
-            var marker = new google.maps.Marker;
-            markerArray.push(marker);
-            marker.setPosition(latLng);
+function combineAndMark(latLng, owm_icon, markerArray, map, time) {
+    return function(values){
+        var data = combineData(values, USE_NOW_CAST, USE_OPEN_WEATHER_MAP);
+        console.log(new Date(time).toISOString(), ":", data, "mm", latLng.toString());
+
+        var marker = new google.maps.Marker();
+        markerArray.push(marker);
+        marker.setPosition(latLng);
+        owm_icon.url = "http://openweathermap.org/img/w/" + data.weatherIcon + ".png";
+        marker.setIcon(owm_icon);
+        marker.setMap(map);
+        /*
+            // TODO: Show rain
             if (mm === 0) {
                 marker.setIcon(sun);
             } else if (mm === 1) {
@@ -208,28 +216,35 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
             } else {
                 marker.setIcon(heavy_rain);
             }
-            marker.setMap(map);
-            console.log(new Date(time).toISOString(), ":", mm, "mm", latLng.toString());
+        */
+    }
+}
 
-            return {data, latLng, time};
-        })
-    )).then(function(values){
-        // Something to do when everything is done
-        //console.log("all done", values);
-    });
-    getOWMWeatherPromises.map(promise =>
-        promise.then(({data, latLng, time}) => {
-            var nearest = getNearestForecast(data.list, time);
-            console.log("nearest", new Date(nearest.dt*1000).toISOString());
-            var icon = nearest.weather[0].icon;
-            var marker = new google.maps.Marker;
-            markerArray.push(marker);
-            marker.setPosition(latLng);
-            owm_icon.url = "http://openweathermap.org/img/w/" + icon + ".png";
-            marker.setIcon(owm_icon);
-            marker.setMap(map);
-        })
-    );
+// mm: mm / hour
+function combineData(values, nowCast, openWeatherMap){
+    var obj = {};
+    var nowCastData = nowCast ? values[0] : null;
+    var openWeatherMapData = openWeatherMap ? values[nowCast ? 1 : 0] : null;
+    if (openWeatherMapData) {
+        if(openWeatherMapData.rain && openWeatherMapData.rain["3h"]){
+            obj.mm = openWeatherMapData.rain["3h"] / 3;
+        }
+        obj.weatherIcon = openWeatherMapData.weather[0].icon;
+    }
+    if (nowCast) {
+        obj.mm = nowCastData.mm;
+    }
+    return obj;
+}
+
+function processNowCast({data, latLng, time}) {
+    return {mm: data.pos[0].mm};
+}
+
+function processOpenWeatherMap({data, latLng, time}) {
+    var nearest = getNearestForecast(data.list, time);
+    console.log("nearest", new Date(nearest.dt * 1000).toISOString());
+    return nearest;
 }
 
 function getNearestForecast(list, timeMillis) {
