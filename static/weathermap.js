@@ -232,12 +232,19 @@ function combineData(values, nowCast, openWeatherMap){
         obj.weatherIcon = openWeatherMapData.weather[0].icon;
     }
     if (nowCast) {
-        obj.mm = nowCastData.mm;
+        if(nowCastData.mm !== null){
+            obj.mm = nowCastData.mm;
+        } else {
+            console.log("skipped now cast");
+        }
     }
     return obj;
 }
 
 function processNowCast({data, latLng, time}) {
+    if (data.error) {
+        return {mm: null};
+    }
     return {mm: data.pos[0].mm};
 }
 
