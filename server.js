@@ -31,6 +31,10 @@ app.post('/api', function (req, res) {
                 return date.toString();
             })
         });
+    }, function (){
+        res.json({
+            error: true
+        });
     });
 });
 
@@ -43,6 +47,8 @@ app.get('/map', function (req, res) {
     var fileName = "req.png";
     rnc.downloadAndMarkPoint(pos, rnc.MAP_TYPE[type], zoom, date, fileName).then(function () {
         res.sendFile(__dirname + "/" + fileName);
+    }, function(){
+        res.sendFile(__dirname + "/ooj.png");
     });
 });
 

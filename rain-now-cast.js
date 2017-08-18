@@ -50,6 +50,34 @@ Pos.prototype.mapToImage = function (zoom) {
     };
 };
 
+var ETOROFU = new Pos(45.679122, 149.507813);
+var KAGOSHIMA = new Pos(30.111624, 129.205078);
+var FUKUOKA = new Pos(34.056975, 132.281250);
+var YONAGUNI = new Pos(23.850415, 122.701172);
+var JAPAN_RANGE = [
+    [ETOROFU, KAGOSHIMA],
+    [FUKUOKA, YONAGUNI],
+];
+
+/**
+ * Roughly judges if it is in Japan. Use data only in this range
+ */
+Pos.prototype.isInJapan = function () {
+    return JAPAN_RANGE.some((range) =>
+        between(range[0].lat, this.lat, range[1].lat) && between(range[0].long, this.long, range[1].long)
+    );
+};
+
+/**
+ * a <= b <= c or c <= b <= a
+ * @param a
+ * @param b
+ * @param c
+ */
+function between(a, b, c) {
+    return (a <= b && b <= c) || (c <= b && b <= a);
+}
+
 var FIVE_MIN = 5 * 60 * 1000;
 
 /**
@@ -96,7 +124,11 @@ function toStringUTC(date) {
 }
 
 function downloadMap(pos, type, zoom, date, fileName) {
-    return new Promise(function (resolve) {
+    return new Promise(function (resolve, reject) {
+        if (!pos.isInJapan()) {
+            reject();
+            return;
+        }
         var map = pos.mapToImage(zoom);
         var url = getImageUrlPrefix(type, date, zoom) + map.imgLong + "_" + map.imgLat + ".png";
         console.log("START", url);
