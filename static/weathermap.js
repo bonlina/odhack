@@ -372,7 +372,7 @@ function getOWMWeather_viaCORS(latLng, owm_weather, i, time) {
     return new Promise(function (resolve) {
         // This is a sample server that supports CORS.
         var url = 'http://api.openweathermap.org/data/2.5/forecast?lat=' + latLng.lat() + '&lon=' + latLng.lng() + '&units=metric&appid=cbcafe8bb09e522c0226c7a4b5ca05cc';
-        var sampleDataUrl = "http://localhost:3000/static/openweathermap.json";
+        var sampleDataUrl = "/static/openweathermap.json";
 
         var xhr = createCORSRequest('GET', USE_OPEN_WEATHER_MAP_SAMPLE_DATA ? sampleDataUrl : url);
         if (!xhr) {
