@@ -2,7 +2,7 @@ var USE_NOW_CAST = true;
 var USE_OPEN_WEATHER_MAP = true;
 var USE_OPEN_WEATHER_MAP_SAMPLE_DATA = false; // Use sample data so that we don't get API limitation
 var OPEN_WEATHER_MAP_TIME_WINDOW_HOURS = 3;
-var HOW_OFTEN_SHOW_WEATHER_DATA = 15; // if smaller then more ofter
+var HOW_OFTEN_SHOW_WEATHER_DATA = 14; // if smaller then more ofter
 
 function initMap() {
     var markerArray = [];
@@ -12,7 +12,7 @@ function initMap() {
 
     // Create a map and center it on Manhattan.
     var map = new google.maps.Map(document.getElementById('map'), {
-        zoom: 13,
+        zoom: 8,
         // TODO: use location of user https://developers.google.com/maps/documentation/javascript/geolocation
         center: {lat: 40.771, lng: -73.974},
         mapTypeId: 'terrain'
@@ -51,11 +51,6 @@ function initMap() {
         } else {
 //            console.log("skip route_change");
         }
-    });
-
-    // change mode (walking/driving)
-    $('input[type="radio"]').on('change', function(e) {
-        document.getElementById('mode').value = this.id;
     });
 
     // Display the route between the initial start and end selections.
@@ -97,12 +92,15 @@ function calculateAndDisplayRoute(directionsDisplay, directionsService, markerAr
         provideRouteAlternatives: true,
         //region: 'ja',
         unitSystem: google.maps.UnitSystem.METRIC,
+        //avoidHighways: true,
+        //avoidTolls: true,
         transitOptions: {
             //arrivalTime: Date,
             departureTime: getTimeNow(),  // for the time N milliseconds from now.
             modes: ['RAIL', 'BUS', 'SUBWAY', 'TRAIN', 'TRAM'],
             routingPreference: 'FEWER_TRANSFERS'
         }
+
     }, function(response, status) {
         // Route the directions and pass the response to a function to create
         // markers for each step.
@@ -111,7 +109,7 @@ function calculateAndDisplayRoute(directionsDisplay, directionsService, markerAr
             directionsDisplay.setDirections(response);
             showSteps(response, markerArray, stepDisplay, map, 0);
         } else {
-            window.alert('Directions request failed due to ' + status);
+            //window.alert('Directions request failed due to ' + status);
         }
     });
 }
@@ -123,8 +121,7 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
     // First, remove any existing markers from the map.
     removeAllMarkers(markerArray);
     map.clearOverlays;
-
-
+    
     var icons = {
         owm_icon: {
             scaledSize: new google.maps.Size(50, 50), // scaled size
@@ -228,7 +225,7 @@ var WEATHER = {
     THUNDERSTORM: "11",
     SNOW: "13",
     MIST: "50",
-    STRONG_SUN: "100",
+    STRONG_SUN: "100"
 };
 
 var ICONS = {
@@ -238,7 +235,7 @@ var ICONS = {
     RAINY1: "rainy1",
     RAINY2: "rainy2",
     RAINY3: "rainy3",
-    THUNDER: "thunder",
+    THUNDER: "thunder"
 };
 
 function chooseIcon(data, icons) {
