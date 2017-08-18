@@ -206,6 +206,7 @@ function combineData(values, nowCast, openWeatherMap){
             obj.mmOwm = openWeatherMapData.rain["3h"] / 3;
         }
         obj.weatherIcon = openWeatherMapData.weather[0].icon;
+        obj.temperature = openWeatherMapData.main.temp;
     }
     if (nowCast) {
         if(nowCastData.mm !== null){
@@ -227,10 +228,12 @@ var WEATHER = {
     THUNDERSTORM: "11",
     SNOW: "13",
     MIST: "50",
+    STRONG_SUN: "100",
 };
 
 var ICONS = {
     SUNNY: "sunny",
+    STRONG_SUN: "strong_sun",
     CLOUDY: "cloudy",
     RAINY1: "rainy1",
     RAINY2: "rainy2",
@@ -240,8 +243,14 @@ var ICONS = {
 
 function chooseIcon(data, icons) {
     var icon;
-    var nowCastAvailable = data.mm != null;
+    var nowCastAvailable = data.mm !== null;
     var owmWeather = data.weatherIcon ? data.weatherIcon.substr(0, 2) : null;
+    // preprocessing
+    console.log(data.temperature);
+    if (owmWeather && owmWeather === WEATHER.CLEAR_SKY && data.temperature >= 27) {
+        owmWeather = WEATHER.STRONG_SUN;
+    }
+    // choosing icon
     if (nowCastAvailable && data.mm > 0) {
         if (data.mm <= 1) {
             icon = ICONS.RAINY1;
@@ -255,6 +264,10 @@ function chooseIcon(data, icons) {
         switch (owmWeather) {
             case WEATHER.CLEAR_SKY:
                 icon = ICONS.SUNNY;
+                break;
+            case WEATHER.STRONG_SUN:
+                console.log(data.temperature);
+                icon = ICONS.STRONG_SUN;
                 break;
             case WEATHER.FEW_CLOUDS:
             case WEATHER.SCATTERED_CLOUDS:
@@ -278,6 +291,7 @@ function chooseIcon(data, icons) {
     if (owmWeather === WEATHER.THUNDERSTORM) {
         icon = ICONS.THUNDER;
     }
+
     /*
     // Debug for testing icons
     var random = [ ICONS.SUNNY, ICONS.CLOUDY, ICONS.RAINY1, ICONS.RAINY2, ICONS.RAINY3, ICONS.THUNDER ];
