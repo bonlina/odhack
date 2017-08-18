@@ -125,31 +125,17 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
     map.clearOverlays;
 
 
-    var sun = {
-        url: "/static/icons/sunny.png",
-        scaledSize: new google.maps.Size(30, 30), // scaled size
-        origin: new google.maps.Point(0, 0), // origin
-        anchor: new google.maps.Point(0, 0) // anchor
-    };
-
-    var sun_under_cloud_and_rain = {
-        url: "/static/icons/cloud.png",
-        scaledSize: new google.maps.Size(30, 30), // scaled size
-        origin: new google.maps.Point(0, 0), // origin
-        anchor: new google.maps.Point(0, 0) // anchor
-    };
-
-    var heavy_rain = {
-        url: "/static/icons/heavy%20rain.png",
-        scaledSize: new google.maps.Size(30, 30), // scaled size
-        origin: new google.maps.Point(0, 0), // origin
-        anchor: new google.maps.Point(0, 0) // anchor
-    };
-
-    var owm_icon = {
-        scaledSize: new google.maps.Size(50, 50), // scaled size
-        origin: new google.maps.Point(0, 0), // origin
-        anchor: new google.maps.Point(0, 0) // anchor
+    var icons = {
+        owm_icon: {
+            scaledSize: new google.maps.Size(50, 50), // scaled size
+            origin: new google.maps.Point(0, 0), // origin
+            anchor: new google.maps.Point(0, 0) // anchor
+        },
+        our_icon: {
+            scaledSize: new google.maps.Size(50, 50), // scaled size
+            origin: new google.maps.Point(0, 0), // origin
+            anchor: new google.maps.Point(0, 0) // anchor
+        }
     };
 
     //alert(directionResult.routes.length);
@@ -183,7 +169,7 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
             if (USE_OPEN_WEATHER_MAP) {
                 promises.push(getOWMWeather_viaCORS(location, owm_weather, weather_datapoint_cnt, time).then(processOpenWeatherMap));
             }
-            Promise.all(promises).then(combineAndMark(location, owm_icon, markerArray, map, time));
+            Promise.all(promises).then(combineAndMark(location, icons, markerArray, map, time));
             weather_datapoint_cnt += 1;
             distanceWhenShownLastTime = 0;
         } else {
@@ -196,7 +182,7 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
     console.log("show", (myRoute.steps.length - skipped), "/", myRoute.steps.length, "steps");
 }
 
-function combineAndMark(latLng, owm_icon, markerArray, map, time) {
+function combineAndMark(latLng, icons, markerArray, map, time) {
     return function(values){
         var data = combineData(values, USE_NOW_CAST, USE_OPEN_WEATHER_MAP);
         console.log(new Date(time).toISOString(), ":", data, "mm", latLng.toString());
@@ -204,19 +190,9 @@ function combineAndMark(latLng, owm_icon, markerArray, map, time) {
         var marker = new google.maps.Marker();
         markerArray.push(marker);
         marker.setPosition(latLng);
-        owm_icon.url = "http://openweathermap.org/img/w/" + data.weatherIcon + ".png";
-        marker.setIcon(owm_icon);
+        var icon = chooseIcon(data, icons);
+        marker.setIcon(icon);
         marker.setMap(map);
-        /*
-            // TODO: Show rain
-            if (mm === 0) {
-                marker.setIcon(sun);
-            } else if (mm === 1) {
-                marker.setIcon(sun_under_cloud_and_rain);
-            } else {
-                marker.setIcon(heavy_rain);
-            }
-        */
     }
 }
 
@@ -227,7 +203,7 @@ function combineData(values, nowCast, openWeatherMap){
     var openWeatherMapData = openWeatherMap ? values[nowCast ? 1 : 0] : null;
     if (openWeatherMapData) {
         if(openWeatherMapData.rain && openWeatherMapData.rain["3h"]){
-            obj.mm = openWeatherMapData.rain["3h"] / 3;
+            obj.mmOwm = openWeatherMapData.rain["3h"] / 3;
         }
         obj.weatherIcon = openWeatherMapData.weather[0].icon;
     }
@@ -239,6 +215,77 @@ function combineData(values, nowCast, openWeatherMap){
         }
     }
     return obj;
+}
+
+var WEATHER = {
+    CLEAR_SKY: "01",
+    FEW_CLOUDS: "02",
+    SCATTERED_CLOUDS: "03",
+    BROKEN_CLOUDS: "04",
+    SHOWER_RAIN: "09",
+    RAIN: "10",
+    THUNDERSTORM: "11",
+    SNOW: "13",
+    MIST: "50",
+};
+
+var ICONS = {
+    SUNNY: "sunny",
+    CLOUDY: "cloudy",
+    RAINY1: "rainy1",
+    RAINY2: "rainy2",
+    RAINY3: "rainy3",
+    THUNDER: "thunder",
+};
+
+function chooseIcon(data, icons) {
+    var icon;
+    var nowCastAvailable = data.mm != null;
+    var owmWeather = data.weatherIcon ? data.weatherIcon.substr(0, 2) : null;
+    if (nowCastAvailable && data.mm > 0) {
+        if (data.mm <= 1) {
+            icon = ICONS.RAINY1;
+        } else if (data.mm <= 10) {
+            icon = ICONS.RAINY2;
+        } else {
+            icon = ICONS.RAINY3;
+        }
+    } else if (owmWeather) {
+        // Fallback for open weather map
+        switch (owmWeather) {
+            case WEATHER.CLEAR_SKY:
+                icon = ICONS.SUNNY;
+                break;
+            case WEATHER.FEW_CLOUDS:
+            case WEATHER.SCATTERED_CLOUDS:
+            case WEATHER.BROKEN_CLOUDS:
+                icon = ICONS.CLOUDY;
+                break;
+            case WEATHER.SHOWER_RAIN:
+                // Trust now cast if OWM says rainy
+                icon = nowCastAvailable ? ICONS.CLOUDY : ICONS.RAINY1;
+                break;
+            case WEATHER.RAIN:
+                icon = nowCastAvailable ? ICONS.CLOUDY : ICONS.RAINY2;
+                break;
+            default:
+                // We don't have icons
+                icons.owm_icon.url = "http://openweathermap.org/img/w/" + data.weatherIcon + ".png";
+                return icons.owm_icon;
+        }
+    }
+
+    if (owmWeather === WEATHER.THUNDERSTORM) {
+        icon = ICONS.THUNDER;
+    }
+    /*
+    // Debug for testing icons
+    var random = [ ICONS.SUNNY, ICONS.CLOUDY, ICONS.RAINY1, ICONS.RAINY2, ICONS.RAINY3, ICONS.THUNDER ];
+    icon = random[parseInt(Math.random() * random.length)];
+     */
+
+    icons.our_icon.url = "/static/icons/" + icon + ".png";
+    return icons.our_icon;
 }
 
 function processNowCast({data, latLng, time}) {
