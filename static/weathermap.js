@@ -328,16 +328,32 @@ function getOWMWeather_viaCORS(latLng, owm_weather, i, time) {
 
         // Response handlers
         xhr.onload = function () {
-            owm_weather[i] = xhr.responseText;
-            //console.log('Response from CORS request to ' + text);
-            resolve({latLng, data: JSON.parse(xhr.responseText), time});
+            try {
+                owm_weather[i] = xhr.responseText;
+                console.log('Response from CORS request to ' + text);
+                resolve({latLng, data: JSON.parse(xhr.responseText), time});
+            } catch(e) {
+                processErrorFromOWM(resolve, owm_weather, latLng, i, time);
+            }
         };
 
         xhr.onerror = function () {
-            console.log('Woops, there was an error making the request.');
+            processErrorFromOWM(resolve, owm_weather, latLng, i, time);
+        };
+        xhr.onabort = function () {
+            processErrorFromOWM(resolve, owm_weather, latLng, i, time);
+        };
+        xhr.ontimeout = function () {
+            processErrorFromOWM(resolve, owm_weather, latLng, i, time);
         };
 
         console.log('Request OWM for', latLng.toString());
         xhr.send();
     });
+}
+
+// it's never called
+function processErrorFromOWM(resolve, owm_weather, latLng, i, time) {
+    owm_weather[i] = WEATHER_DATA[i % WEATHER_DATA.length];
+    resolve({latLng, data: JSON.parse(owm_weather[i]), time});
 }
