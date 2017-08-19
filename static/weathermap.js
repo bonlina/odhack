@@ -3,6 +3,8 @@ var USE_OPEN_WEATHER_MAP = true;
 var USE_OPEN_WEATHER_MAP_SAMPLE_DATA = false; // Use sample data so that we don't get API limitation
 var OPEN_WEATHER_MAP_TIME_WINDOW_HOURS = 3;
 var HOW_OFTEN_SHOW_WEATHER_DATA = 14; // if smaller then more ofter
+var NOW_CAST_INTERVAL = 5 * 60 * 1000;
+var NUM_OF_RECOMMENDATIONS = 12;
 
 function initMap() {
     var markerArray = [];
@@ -121,7 +123,7 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
     // First, remove any existing markers from the map.
     removeAllMarkers(markerArray);
     map.clearOverlays;
-    
+
     var icons = {
         owm_icon: {
             scaledSize: new google.maps.Size(50, 50), // scaled size
@@ -150,6 +152,7 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
     var weather_datapoint_cnt = 0;
     var time = new Date().getTime();
     var skipped = 0;
+    var wholePathsPromise = [];
 
     for (var i = 0; i < myRoute.steps.length; i++) {
         var step = myRoute.steps[i];
@@ -166,7 +169,7 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
             if (USE_OPEN_WEATHER_MAP) {
                 promises.push(getOWMWeather_viaCORS(location, owm_weather, weather_datapoint_cnt, time).then(processOpenWeatherMap));
             }
-            Promise.all(promises).then(combineAndMark(location, icons, markerArray, map, time));
+            wholePathsPromise.push(Promise.all(promises).then(combineAndMark(location, icons, markerArray, map, time)));
             weather_datapoint_cnt += 1;
             distanceWhenShownLastTime = 0;
         } else {
@@ -176,12 +179,78 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
         }
         time += step.duration.value * 1000;
     }
+    Promise.all(wholePathsPromise).then(recommend());
     console.log("show", (myRoute.steps.length - skipped), "/", myRoute.steps.length, "steps");
+}
+
+function recommend() {
+    return function (matrix) {
+        matrix = transpose(matrix);
+        console.log("recommendation", matrix);
+        var costMatrix = matrix.map(function (row) {
+            return row.map(cost)
+        });
+        console.log(costMatrix);
+        var costs = costMatrix.map(reduction);
+        var min = minimum(costs);
+        console.log(min);
+        var currentCost = costs[0];
+        if (currentCost !== null && min.index > 0) {
+            var minLater = min.index * 5;
+            var avoidRate = (currentCost - min.cost) / currentCost;
+            var avoidRatePercentage = parseInt(avoidRate * 100);
+            var message = "If you leave " + minLater + " minutes later, you can avoid " + avoidRatePercentage + "% of rain";
+            console.log(message);
+            $("#warnings-panel").html(message);
+        }
+    }
+}
+
+function transpose(matrix) {
+    var newMatrix = [];
+    if (!matrix[0]) return [];
+    for (var i = 0; i < matrix[0].length; i++) {
+        newMatrix.push([]);
+    }
+    for (var i = 0; i < matrix[0].length; i++) {
+        for (var j = 0; j < matrix.length; j++) {
+            newMatrix[i][j] = matrix[j][i];
+        }
+    }
+    return newMatrix;
+}
+
+function cost(weather) {
+    return weather.mm || weather.mmOwm;
+}
+
+function reduction(costs) {
+    var sum = 0;
+    for (var i = 0; i < costs.length; i++) {
+        if (isNaN(costs[i])) {
+            return null;
+        }
+        sum += costs[i];
+    }
+    return sum;
+}
+
+function minimum(costs) {
+    var index = -1;
+    var cost = Infinity;
+    for (var i = 0; i < costs.length; i++) {
+        if (cost > costs[i]) {
+            index = i;
+            cost = costs[i];
+        }
+    }
+    return {cost, index};
 }
 
 function combineAndMark(latLng, icons, markerArray, map, time) {
     return function(values){
-        var data = combineData(values, USE_NOW_CAST, USE_OPEN_WEATHER_MAP);
+        var {nowCastData, openWeatherMapData} = cleanse(values, USE_NOW_CAST, USE_OPEN_WEATHER_MAP);
+        var data = combineData(nowCastData && nowCastData.current, openWeatherMapData && openWeatherMapData.current);
         console.log(new Date(time).toISOString(), ":", data, "mm", latLng.toString());
 
         var marker = new google.maps.Marker();
@@ -190,22 +259,40 @@ function combineAndMark(latLng, icons, markerArray, map, time) {
         var icon = chooseIcon(data, icons);
         marker.setIcon(icon);
         marker.setMap(map);
+
+        return combine5minData(nowCastData, openWeatherMapData);
     }
 }
 
-// mm: mm / hour
-function combineData(values, nowCast, openWeatherMap){
-    var obj = {};
+function combine5minData(nowCastData, openWeatherMapData) {
+    var arr = [];
+    for (var i = 0; i < NUM_OF_RECOMMENDATIONS; i++) {
+        arr.push(combineData(
+            nowCastData && nowCastData.each5min && nowCastData.each5min[i],
+            openWeatherMapData && openWeatherMapData.each5min && openWeatherMapData.each5min[i]));
+    }
+    return arr;
+}
+
+function cleanse(values, nowCast, openWeatherMap) {
     var nowCastData = nowCast ? values[0] : null;
     var openWeatherMapData = openWeatherMap ? values[nowCast ? 1 : 0] : null;
+    return {nowCastData, openWeatherMapData};
+}
+
+// mm: mm / hour
+function combineData(nowCastData, openWeatherMapData){
+    var obj = {mm: null};
     if (openWeatherMapData) {
         if(openWeatherMapData.rain && openWeatherMapData.rain["3h"]){
             obj.mmOwm = openWeatherMapData.rain["3h"] / 3;
+        } else {
+            obj.mmOwm = 0;
         }
         obj.weatherIcon = openWeatherMapData.weather[0].icon;
         obj.temperature = openWeatherMapData.main.temp;
     }
-    if (nowCast) {
+    if (nowCastData) {
         if(nowCastData.mm !== null){
             obj.mm = nowCastData.mm;
         } else {
@@ -303,13 +390,27 @@ function processNowCast({data, latLng, time}) {
     if (data.error) {
         return {mm: null};
     }
-    return {mm: data.pos[0].mm};
+    return {
+        current: {mm: data.pos[0].mm},
+        each5min: data.pos[0].each5min,
+    };
 }
 
 function processOpenWeatherMap({data, latLng, time}) {
     var nearest = getNearestForecast(data.list, time);
     console.log("nearest", new Date(nearest.dt * 1000).toISOString());
-    return nearest;
+    return {
+        current: nearest,
+        each5min: getEach5MinForecast(data.list, time),
+    };
+}
+
+function getEach5MinForecast(list, timeMillis) {
+    var arr = [];
+    for (var i = 0; i < NUM_OF_RECOMMENDATIONS; i++) {
+        arr.push(getNearestForecast(list, timeMillis + i * NOW_CAST_INTERVAL));
+    }
+    return arr;
 }
 
 function getNearestForecast(list, timeMillis) {

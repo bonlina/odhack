@@ -79,6 +79,7 @@ function between(a, b, c) {
 }
 
 var FIVE_MIN = 5 * 60 * 1000;
+var ONE_HOUR = 60 * 60 * 1000;
 
 /**
  *
@@ -179,6 +180,11 @@ function getAmount(pos, zoom, date) {
         console.error("Resolution for amount should be Maximum 6");
         zoom = 6;
     }
+    if (date.getTime() > new Date().getTime() + ONE_HOUR) {
+        return new Promise(function (resolve) {
+            resolve(null); // Too future
+        })
+    }
     return downloadMap(pos, MAP_TYPE.HRKSNC_GRAY, zoom, date, fileName)
         .then(function () {
             return new Promise(function (resolve) {
@@ -186,6 +192,7 @@ function getAmount(pos, zoom, date) {
                     if (err) {
                         //throw err;
                         console.error("downloadMap: failed to read" + fileName, err);
+                        resolve(null);
                     } else {
                         var color = image.getPixelColor(map.pixLong, map.pixLat);
                         var amount = colorToAmount(color);
@@ -197,7 +204,6 @@ function getAmount(pos, zoom, date) {
 }
 
 function getDatesWithinAnHour(date) {
-    return [date]; // temporarily
     var dates = [];
     for (var i = 0; i < 12; i++) {
         dates.push(new Date(date.getTime() + FIVE_MIN * i));

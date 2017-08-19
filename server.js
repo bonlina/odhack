@@ -23,7 +23,9 @@ app.post('/api', function (req, res) {
         res.json({
             pos: amounts.map(function (amounts) {
                 return {
-                    mms: amounts,
+                    each5min: amounts.map(mm => {
+                        return {mm};
+                    }),
                     mm: amounts[0],
                 };
             }),
