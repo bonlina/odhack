@@ -199,9 +199,15 @@ function recommend() {
             var minLater = min.index * 5;
             var avoidRate = (currentCost - min.cost) / currentCost;
             var avoidRatePercentage = parseInt(avoidRate * 100);
-            var message = "If you leave " + minLater + " minutes later, you can avoid " + avoidRatePercentage + "% of rain";
+            var message = "If you leave <b>" + minLater + " minutes</b> later, you can <b>avoid " + avoidRatePercentage + "% of rain</b>";
             console.log(message);
-            $("#warnings-panel").html(message);
+            $("#recommendations").html(message);
+
+        } else {
+            var message = "Current leaving time is optimal";
+            console.log(message);
+            $("#recommendations").html(message);
+
         }
     }
 }
