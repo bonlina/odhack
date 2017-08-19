@@ -123,7 +123,7 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
     // First, remove any existing markers from the map.
     removeAllMarkers(markerArray);
     map.clearOverlays;
-    
+
     var icons = {
         owm_icon: {
             scaledSize: new google.maps.Size(50, 50), // scaled size
@@ -185,9 +185,66 @@ function showSteps(directionResult, markerArray, stepDisplay, map, routeIndex) {
 
 function recommend() {
     return function (matrix) {
+        matrix = transpose(matrix);
         console.log("recommendation", matrix);
-        // TODO show
+        var costMatrix = matrix.map(function (row) {
+            return row.map(cost)
+        });
+        console.log(costMatrix);
+        var costs = costMatrix.map(reduction);
+        var min = minimum(costs);
+        console.log(min);
+        var currentCost = costs[0];
+        if (currentCost !== null && min.index > 0) {
+            var minLater = min.index * 5;
+            var avoidRate = (currentCost - min.cost) / currentCost;
+            var avoidRatePercentage = parseInt(avoidRate * 100);
+            var message = "If you leave " + minLater + " minutes later, you can avoid " + avoidRatePercentage + "% of rain";
+            console.log(message);
+            $("#warnings-panel").html(message);
+        }
     }
+}
+
+function transpose(matrix) {
+    var newMatrix = [];
+    if (!matrix[0]) return [];
+    for (var i = 0; i < matrix[0].length; i++) {
+        newMatrix.push([]);
+    }
+    for (var i = 0; i < matrix[0].length; i++) {
+        for (var j = 0; j < matrix.length; j++) {
+            newMatrix[i][j] = matrix[j][i];
+        }
+    }
+    return newMatrix;
+}
+
+function cost(weather) {
+    return weather.mm || weather.mmOwm;
+}
+
+function reduction(costs) {
+    var sum = 0;
+    for (var i = 0; i < costs.length; i++) {
+        if (isNaN(costs[i])) {
+            return null;
+        }
+        sum += costs[i];
+    }
+    return sum;
+}
+
+function minimum(costs) {
+    var index = -1;
+    var cost = Infinity;
+    for (var i = 0; i < costs.length; i++) {
+        if (cost > costs[i]) {
+            index = i;
+            cost = costs[i];
+        }
+    }
+    return {cost, index};
 }
 
 function combineAndMark(latLng, icons, markerArray, map, time) {
@@ -229,6 +286,8 @@ function combineData(nowCastData, openWeatherMapData){
     if (openWeatherMapData) {
         if(openWeatherMapData.rain && openWeatherMapData.rain["3h"]){
             obj.mmOwm = openWeatherMapData.rain["3h"] / 3;
+        } else {
+            obj.mmOwm = 0;
         }
         obj.weatherIcon = openWeatherMapData.weather[0].icon;
         obj.temperature = openWeatherMapData.main.temp;
